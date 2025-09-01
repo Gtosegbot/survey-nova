@@ -1,4 +1,5 @@
-import { BarChart3, Mail, Phone, MapPin } from "lucide-react";
+import { Mail, Phone, MapPin } from "lucide-react";
+import tepesquiseiLogo from "@/assets/tepesquisei-logo.png";
 
 const footerSections = [
   {
@@ -47,9 +48,9 @@ export const Footer = () => {
           {/* Brand Section */}
           <div className="lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <BarChart3 className="h-8 w-8 text-primary" />
+              <img src={tepesquiseiLogo} alt="Te Pesquisei" className="h-8 w-8" />
               <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                SurveyNova
+                Te Pesquisei
               </span>
             </div>
             <p className="text-sm text-muted-foreground mb-6">
@@ -60,11 +61,19 @@ export const Footer = () => {
             <div className="space-y-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                contato@surveynova.com.br
+                contato@tepesquisei.com
+              </div>
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                comercial@tepesquisei.com
+              </div>
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                suporte@tepesquisei.com
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
-                (11) 9999-9999
+                (11) 95194-7025
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
@@ -96,7 +105,7 @@ export const Footer = () => {
         {/* Bottom Section */}
         <div className="mt-12 pt-8 border-t border-border/50 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
           <p className="text-sm text-muted-foreground">
-            © 2024 SurveyNova. Todos os direitos reservados.
+            © 2024 Te Pesquisei. Todos os direitos reservados.
           </p>
           
           <div className="flex gap-6 text-sm text-muted-foreground">

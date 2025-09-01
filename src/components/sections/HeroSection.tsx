@@ -63,6 +63,7 @@ export const HeroSection = () => {
               size="lg" 
               variant="hero" 
               className="group px-8 py-4 text-lg"
+              onClick={() => window.location.href = '/dashboard'}
             >
               Criar Primeira Pesquisa
               <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />

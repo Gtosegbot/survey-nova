@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { Menu, BarChart3, Settings } from "lucide-react";
+import { Menu, Search } from "lucide-react";
+import tepesquiseiLogo from "@/assets/tepesquisei-logo.png";
 
 export const Header = () => {
   return (
@@ -7,9 +8,9 @@ export const Header = () => {
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-2">
-            <BarChart3 className="h-8 w-8 text-primary" />
+            <img src={tepesquiseiLogo} alt="Te Pesquisei" className="h-8 w-8" />
             <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              SurveyNova
+              Te Pesquisei
             </span>
           </div>
           
