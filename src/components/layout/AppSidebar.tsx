@@ -10,7 +10,8 @@ import {
   MessageSquare,
   Brain,
   Shield,
-  Search
+  Search,
+  Send
 } from "lucide-react";
 
 import {
@@ -31,7 +32,8 @@ const navigationItems = [
     group: "Principal",
     items: [
       { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
-      { title: "Pesquisas", url: "/surveys", icon: FileText },
+      { title: "Minhas Pesquisas", url: "/my-surveys", icon: FileText },
+      { title: "Criar Pesquisa", url: "/surveys", icon: Search },
       { title: "Analytics", url: "/analytics", icon: TrendingUp },
     ]
   },
@@ -46,7 +48,8 @@ const navigationItems = [
     group: "Gestão",
     items: [
       { title: "Créditos", url: "/credits", icon: CreditCard },
-      { title: "Equipe", url: "/team", icon: Users },
+      { title: "Importar Contatos", url: "/contacts/import", icon: Users },
+      { title: "Disparador", url: "/mass-dispatcher", icon: Send },
       { title: "Validação", url: "/validation", icon: Shield },
     ]
   },

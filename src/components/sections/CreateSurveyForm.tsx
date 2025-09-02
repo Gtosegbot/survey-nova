@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Trash2, Save, Settings, Check } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface Question {
   id: string;
@@ -13,13 +15,46 @@ interface Question {
   title: string;
   options?: string[];
   required: boolean;
+  saved?: boolean;
+}
+
+interface MandatoryQuestion {
+  id: string;
+  category: 'location' | 'gender' | 'age';
+  title: string;
+  options: string[];
+  enabled: boolean;
 }
 
 export const CreateSurveyForm = () => {
+  const { toast } = useToast();
   const [surveyTitle, setSurveyTitle] = useState("");
   const [surveyDescription, setSurveyDescription] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [credits, setCredits] = useState(100.00);
+  const [mandatoryQuestions, setMandatoryQuestions] = useState<MandatoryQuestion[]>([
+    {
+      id: "location",
+      category: "location",
+      title: "Qual sua localização?",
+      options: ["País", "Estado", "Cidade", "Região"],
+      enabled: true
+    },
+    {
+      id: "gender", 
+      category: "gender",
+      title: "Qual seu sexo?",
+      options: ["Masculino", "Feminino"],
+      enabled: true
+    },
+    {
+      id: "age",
+      category: "age", 
+      title: "Qual sua faixa etária?",
+      options: ["16-24", "25-34", "35-44"],
+      enabled: true
+    }
+  ]);
 
   const addQuestion = (type: Question['type']) => {
     const newQuestion: Question = {
@@ -37,13 +72,125 @@ export const CreateSurveyForm = () => {
   };
 
   const updateQuestion = (id: string, updates: Partial<Question>) => {
-    setQuestions(questions.map(q => q.id === id ? { ...q, ...updates } : q));
+    setQuestions(questions.map(q => q.id === id ? { ...q, ...updates, saved: false } : q));
+  };
+
+  const saveQuestion = (id: string) => {
+    const question = questions.find(q => q.id === id);
+    if (!question?.title.trim()) {
+      toast({
+        title: "Erro",
+        description: "A pergunta precisa ter um título.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setQuestions(questions.map(q => 
+      q.id === id ? { ...q, saved: true } : q
+    ));
+    
+    toast({
+      title: "Pergunta salva",
+      description: "A pergunta foi salva com sucesso.",
+    });
+  };
+
+  const updateMandatoryQuestion = (id: string, updates: Partial<MandatoryQuestion>) => {
+    setMandatoryQuestions(prev => 
+      prev.map(q => q.id === id ? { ...q, ...updates } : q)
+    );
+  };
+
+  const addOptionToMandatory = (questionId: string) => {
+    setMandatoryQuestions(prev =>
+      prev.map(q => 
+        q.id === questionId 
+          ? { ...q, options: [...q.options, ""] }
+          : q
+      )
+    );
+  };
+
+  const updateMandatoryOption = (questionId: string, optionIndex: number, value: string) => {
+    setMandatoryQuestions(prev =>
+      prev.map(q => 
+        q.id === questionId 
+          ? { 
+              ...q, 
+              options: q.options.map((opt, idx) => idx === optionIndex ? value : opt)
+            }
+          : q
+      )
+    );
+  };
+
+  const removeMandatoryOption = (questionId: string, optionIndex: number) => {
+    setMandatoryQuestions(prev =>
+      prev.map(q => 
+        q.id === questionId 
+          ? { ...q, options: q.options.filter((_, idx) => idx !== optionIndex) }
+          : q
+      )
+    );
   };
 
   const saveSurvey = () => {
-    // Simular salvamento
-    console.log("Survey saved:", { surveyTitle, surveyDescription, questions });
-    alert("Pesquisa salva com sucesso! Você pode distribuir via link/QR code.");
+    const unsavedQuestions = questions.filter(q => !q.saved);
+    const enabledMandatory = mandatoryQuestions.filter(q => q.enabled);
+    
+    if (!surveyTitle.trim()) {
+      toast({
+        title: "Erro",
+        description: "A pesquisa precisa ter um título.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (unsavedQuestions.length > 0) {
+      toast({
+        title: "Erro", 
+        description: `Você tem ${unsavedQuestions.length} pergunta(s) não salva(s). Salve todas antes de finalizar.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (enabledMandatory.length === 0 && questions.length === 0) {
+      toast({
+        title: "Erro",
+        description: "A pesquisa precisa ter pelo menos uma pergunta.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Salvar pesquisa
+    const surveyData = {
+      id: Date.now().toString(),
+      title: surveyTitle,
+      description: surveyDescription,
+      mandatoryQuestions: enabledMandatory,
+      questions: questions,
+      createdAt: new Date(),
+      status: 'draft'
+    };
+
+    // Salvar no localStorage temporariamente
+    const existingSurveys = JSON.parse(localStorage.getItem('surveys') || '[]');
+    existingSurveys.push(surveyData);
+    localStorage.setItem('surveys', JSON.stringify(existingSurveys));
+
+    toast({
+      title: "Sucesso!",
+      description: "Pesquisa criada com sucesso!",
+    });
+    
+    // Reset form
+    setSurveyTitle("");
+    setSurveyDescription("");
+    setQuestions([]);
   };
 
   return (
@@ -96,16 +243,80 @@ export const CreateSurveyForm = () => {
           <CardDescription>Adicione perguntas à sua pesquisa. As perguntas demográficas são obrigatórias.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Mandatory Questions Notice */}
-          <div className="p-4 bg-muted/50 rounded-lg">
-            <p className="text-sm text-muted-foreground mb-2">
-              <strong>Perguntas obrigatórias</strong> (adicionadas automaticamente):
-            </p>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Localidade (País, Estado, Cidade, Região)</li>
-              <li>• Sexo (Masculino, Feminino, Outros, Prefiro não responder)</li>
-              <li>• Faixa Etária (16-24, 25-34, 35-44, 45-59, 60+)</li>
-            </ul>
+          {/* Mandatory Questions Configuration */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              <Label className="text-base font-medium">Perguntas Obrigatórias Configuráveis</Label>
+            </div>
+            
+            {mandatoryQuestions.map((mandatoryQ) => (
+              <Card key={mandatoryQ.id} className={`border-l-4 ${mandatoryQ.enabled ? 'border-l-green-500' : 'border-l-gray-300'}`}>
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          checked={mandatoryQ.enabled}
+                          onCheckedChange={(checked) => 
+                            updateMandatoryQuestion(mandatoryQ.id, { enabled: !!checked })
+                          }
+                        />
+                        <Label className="font-medium">{mandatoryQ.category === 'location' ? 'Localização' : mandatoryQ.category === 'gender' ? 'Sexo' : 'Faixa Etária'}</Label>
+                      </div>
+                      <Badge variant={mandatoryQ.enabled ? "default" : "secondary"}>
+                        {mandatoryQ.enabled ? "Ativa" : "Inativa"}
+                      </Badge>
+                    </div>
+                    
+                    {mandatoryQ.enabled && (
+                      <>
+                        <div>
+                          <Label>Pergunta</Label>
+                          <Input 
+                            value={mandatoryQ.title}
+                            onChange={(e) => updateMandatoryQuestion(mandatoryQ.id, { title: e.target.value })}
+                            placeholder="Digite a pergunta..."
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label>Opções de Resposta</Label>
+                          <div className="space-y-2">
+                            {mandatoryQ.options.map((option, optionIndex) => (
+                              <div key={optionIndex} className="flex gap-2">
+                                <Input
+                                  placeholder={`Opção ${optionIndex + 1}`}
+                                  value={option}
+                                  onChange={(e) => updateMandatoryOption(mandatoryQ.id, optionIndex, e.target.value)}
+                                />
+                                {mandatoryQ.options.length > 1 && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => removeMandatoryOption(mandatoryQ.id, optionIndex)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => addOptionToMandatory(mandatoryQ.id)}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Adicionar Opção
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
           {/* Question Types */}
@@ -135,22 +346,40 @@ export const CreateSurveyForm = () => {
 
           {/* Questions List */}
           {questions.map((question, index) => (
-            <Card key={question.id} className="border-l-4 border-l-primary">
+            <Card key={question.id} className={`border-l-4 ${question.saved ? 'border-l-green-500' : 'border-l-primary'}`}>
               <CardContent className="p-4">
                 <div className="space-y-3">
                   <div className="flex justify-between items-start">
-                    <Badge variant="outline" className="text-xs">
-                      {question.type === 'text' ? 'Texto Livre' : 
-                       question.type === 'single' ? 'Escolha Única' :
-                       question.type === 'multiple' ? 'Múltipla Escolha' : 'Escala'}
-                    </Badge>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => removeQuestion(question.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {question.type === 'text' ? 'Texto Livre' : 
+                         question.type === 'single' ? 'Escolha Única' :
+                         question.type === 'multiple' ? 'Múltipla Escolha' : 'Escala'}
+                      </Badge>
+                      {question.saved && (
+                        <Badge variant="default" className="text-xs bg-green-500">
+                          <Check className="h-3 w-3 mr-1" />
+                          Salva
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => saveQuestion(question.id)}
+                        disabled={question.saved}
+                      >
+                        <Save className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => removeQuestion(question.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   
                   <div>
