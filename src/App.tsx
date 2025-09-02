@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import { AppLayout } from "./components/layout/AppLayout";
+import { CreateSurveyForm } from "./components/sections/CreateSurveyForm";
 
 const queryClient = new QueryClient();
 
@@ -19,7 +20,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
-          <Route path="/surveys" element={<AppLayout><div className="p-6"><h1>Pesquisas</h1><p>Em desenvolvimento...</p></div></AppLayout>} />
+          <Route path="/surveys" element={<AppLayout><div className="p-6"><CreateSurveyForm /></div></AppLayout>} />
           <Route path="/analytics" element={<AppLayout><div className="p-6"><h1>Analytics</h1><p>Em desenvolvimento...</p></div></AppLayout>} />
           <Route path="/ai-creator" element={<AppLayout><div className="p-6"><h1>IA Criadora</h1><p>Em desenvolvimento...</p></div></AppLayout>} />
           <Route path="/ai-researcher" element={<AppLayout><div className="p-6"><h1>IA Pesquisadora</h1><p>Em desenvolvimento...</p></div></AppLayout>} />

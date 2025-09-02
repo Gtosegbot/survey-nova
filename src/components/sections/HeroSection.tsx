@@ -73,9 +73,10 @@ export const HeroSection = () => {
               size="lg" 
               variant="outline" 
               className="group px-8 py-4 text-lg border-primary/20 hover:border-primary/40"
+              onClick={() => window.location.href = '/dashboard'}
             >
               <Play className="mr-2 h-5 w-5" />
-              Ver Demo
+              Testar Grátis
             </Button>
           </div>
 

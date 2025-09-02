@@ -79,11 +79,11 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => window.location.href = '/ai-creator'}>
             <Brain className="mr-2 h-4 w-4" />
             Criar com IA
           </Button>
-          <Button>
+          <Button onClick={() => window.location.href = '/surveys'}>
             <Plus className="mr-2 h-4 w-4" />
             Nova Pesquisa
           </Button>
@@ -161,19 +161,19 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button className="w-full justify-start" variant="outline">
+            <Button className="w-full justify-start" variant="outline" onClick={() => window.location.href = '/surveys'}>
               <Plus className="mr-2 h-4 w-4" />
               Criar Nova Pesquisa
             </Button>
-            <Button className="w-full justify-start" variant="outline">
+            <Button className="w-full justify-start" variant="outline" onClick={() => window.location.href = '/ai-creator'}>
               <Brain className="mr-2 h-4 w-4" />
               Assistente IA
             </Button>
-            <Button className="w-full justify-start" variant="outline">
+            <Button className="w-full justify-start" variant="outline" onClick={() => window.location.href = '/analytics'}>
               <BarChart3 className="mr-2 h-4 w-4" />
               Ver Analytics
             </Button>
-            <Button className="w-full justify-start" variant="outline">
+            <Button className="w-full justify-start" variant="outline" onClick={() => window.location.href = '/team'}>
               <Users className="mr-2 h-4 w-4" />
               Gerenciar Equipe
             </Button>

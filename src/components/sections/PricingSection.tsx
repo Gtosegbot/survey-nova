@@ -132,6 +132,7 @@ export const PricingSection = () => {
                   className="w-full" 
                   variant={plan.popular ? "hero" : "outline"}
                   size="lg"
+                  onClick={() => window.location.href = '/dashboard'}
                 >
                   {plan.price === "R$ 0" ? "Começar Grátis" : "Assinar Agora"}
                 </Button>
@@ -140,26 +141,6 @@ export const PricingSection = () => {
           ))}
         </div>
 
-        {/* Revenue Projection */}
-        <div className="mt-16 p-8 bg-gradient-secondary rounded-xl border">
-          <h3 className="text-xl font-bold mb-4 text-center">
-            Projeção de Receita - Cenário Conservador
-          </h3>
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="text-center space-y-2">
-              <div className="text-2xl font-bold text-primary">500</div>
-              <div className="text-sm text-muted-foreground">Usuários Ativos (Mês 6)</div>
-            </div>
-            <div className="text-center space-y-2">
-              <div className="text-2xl font-bold text-success">R$ 87.500</div>
-              <div className="text-sm text-muted-foreground">Receita Mensal Projetada</div>
-            </div>
-            <div className="text-center space-y-2">
-              <div className="text-2xl font-bold text-accent">R$ 1.050.000</div>
-              <div className="text-sm text-muted-foreground">Receita Anual Projetada</div>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );

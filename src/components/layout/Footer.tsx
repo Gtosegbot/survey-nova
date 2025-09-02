@@ -5,37 +5,37 @@ const footerSections = [
   {
     title: "Produto",
     links: [
-      { name: "Recursos", href: "#" },
-      { name: "Preços", href: "#" },
-      { name: "Integrações", href: "#" },
-      { name: "API", href: "#" }
+      { name: "Recursos", href: "#features" },
+      { name: "Preços", href: "#pricing" },
+      { name: "Integrações", href: "/dashboard" },
+      { name: "API", href: "/documentation" }
     ]
   },
   {
     title: "Casos de Uso",
     links: [
-      { name: "Pesquisas Políticas", href: "#" },
-      { name: "Pesquisa de Mercado", href: "#" },
-      { name: "Satisfação do Cliente", href: "#" },
-      { name: "Pesquisa Acadêmica", href: "#" }
+      { name: "Pesquisas Políticas", href: "/use-cases/political" },
+      { name: "Pesquisa de Mercado", href: "/use-cases/market" },
+      { name: "Satisfação do Cliente", href: "/use-cases/satisfaction" },
+      { name: "Pesquisa Acadêmica", href: "/use-cases/academic" }
     ]
   },
   {
     title: "Recursos",
     links: [
-      { name: "Blog", href: "#" },
-      { name: "Guias", href: "#" },
-      { name: "Documentação", href: "#" },
-      { name: "Suporte", href: "#" }
+      { name: "Blog", href: "/blog" },
+      { name: "Guias", href: "/guides" },
+      { name: "Documentação", href: "/documentation" },
+      { name: "Suporte", href: "/support" }
     ]
   },
   {
     title: "Empresa",
     links: [
-      { name: "Sobre", href: "#" },
-      { name: "Carreira", href: "#" },
-      { name: "Imprensa", href: "#" },
-      { name: "Contato", href: "#" }
+      { name: "Sobre", href: "/about" },
+      { name: "Carreira", href: "/careers" },
+      { name: "Imprensa", href: "/press" },
+      { name: "Contato", href: "/contact" }
     ]
   }
 ];
@@ -109,13 +109,13 @@ export const Footer = () => {
           </p>
           
           <div className="flex gap-6 text-sm text-muted-foreground">
-            <a href="#" className="hover:text-foreground transition-colors">
+            <a href="/terms" className="hover:text-foreground transition-colors">
               Termos de Uso
             </a>
-            <a href="#" className="hover:text-foreground transition-colors">
+            <a href="/privacy" className="hover:text-foreground transition-colors">
               Política de Privacidade
             </a>
-            <a href="#" className="hover:text-foreground transition-colors">
+            <a href="/lgpd" className="hover:text-foreground transition-colors">
               LGPD
             </a>
           </div>
