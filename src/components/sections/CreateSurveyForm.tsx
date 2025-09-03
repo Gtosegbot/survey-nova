@@ -6,16 +6,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Save, Settings, Check } from "lucide-react";
+import { Plus, Trash2, Save, Settings, Check, Users, Calculator, PieChart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Question {
   id: string;
-  type: 'text' | 'multiple' | 'single' | 'scale';
+  type: 'text' | 'multiple' | 'single' | 'scale' | 'ranking' | 'matrix';
   title: string;
   options?: string[];
   required: boolean;
   saved?: boolean;
+  minSelections?: number;
+  maxSelections?: number;
+  scaleMin?: number;
+  scaleMax?: number;
+  scaleLabels?: string[];
 }
 
 interface MandatoryQuestion {
@@ -26,32 +31,56 @@ interface MandatoryQuestion {
   enabled: boolean;
 }
 
+interface DemographicQuota {
+  category: string;
+  option: string;
+  percentage: number;
+  targetCount: number;
+  currentCount: number;
+}
+
+interface SurveyConfig {
+  totalParticipants: number;
+  quotas: DemographicQuota[];
+  methodology: 'random' | 'quota' | 'stratified';
+  confidence: number;
+  margin: number;
+}
+
 export const CreateSurveyForm = () => {
   const { toast } = useToast();
   const [surveyTitle, setSurveyTitle] = useState("");
   const [surveyDescription, setSurveyDescription] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [credits, setCredits] = useState(100.00);
+  const [surveyConfig, setSurveyConfig] = useState<SurveyConfig>({
+    totalParticipants: 100,
+    quotas: [],
+    methodology: 'quota',
+    confidence: 95,
+    margin: 5
+  });
+  const [showQuotaCalculator, setShowQuotaCalculator] = useState(false);
   const [mandatoryQuestions, setMandatoryQuestions] = useState<MandatoryQuestion[]>([
     {
       id: "location",
       category: "location",
       title: "Qual sua localização?",
-      options: ["País", "Estado", "Cidade", "Região"],
+      options: ["São Paulo Capital", "Interior SP", "Rio de Janeiro", "Belo Horizonte", "Outros"],
       enabled: true
     },
     {
       id: "gender", 
       category: "gender",
       title: "Qual seu sexo?",
-      options: ["Masculino", "Feminino"],
+      options: ["Masculino", "Feminino", "Outro", "Prefiro não responder"],
       enabled: true
     },
     {
       id: "age",
       category: "age", 
       title: "Qual sua faixa etária?",
-      options: ["16-24", "25-34", "35-44"],
+      options: ["16-24", "25-34", "35-44", "45-59", "60+"],
       enabled: true
     }
   ]);
@@ -61,10 +90,62 @@ export const CreateSurveyForm = () => {
       id: Date.now().toString(),
       type,
       title: "",
-      options: type === 'multiple' || type === 'single' ? [""] : undefined,
-      required: false
+      options: type === 'multiple' || type === 'single' || type === 'ranking' ? [""] : undefined,
+      required: false,
+      ...(type === 'scale' && { scaleMin: 1, scaleMax: 5, scaleLabels: ["Muito Ruim", "Ruim", "Regular", "Bom", "Muito Bom"] }),
+      ...(type === 'multiple' && { minSelections: 1, maxSelections: 3 })
     };
     setQuestions([...questions, newQuestion]);
+  };
+
+  const calculateQuotas = () => {
+    if (!surveyConfig.totalParticipants || surveyConfig.totalParticipants <= 0) {
+      toast({
+        title: "Erro",
+        description: "Defina o número total de participantes primeiro.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newQuotas: DemographicQuota[] = [];
+    const enabledQuestions = mandatoryQuestions.filter(q => q.enabled);
+
+    enabledQuestions.forEach(question => {
+      question.options.forEach((option, index) => {
+        let percentage = 0;
+        
+        // Distribuição padrão baseada em dados demográficos brasileiros
+        if (question.category === 'gender') {
+          if (option.toLowerCase().includes('masculino')) percentage = 48.2;
+          else if (option.toLowerCase().includes('feminino')) percentage = 51.8;
+          else percentage = 0.1;
+        } else if (question.category === 'age') {
+          const ageRanges = ['16-24', '25-34', '35-44', '45-59', '60+'];
+          const agePercentages = [15, 20, 18, 22, 25];
+          const ageIndex = ageRanges.findIndex(range => option.includes(range.split('-')[0]));
+          percentage = ageIndex >= 0 ? agePercentages[ageIndex] : 100 / question.options.length;
+        } else if (question.category === 'location') {
+          percentage = 100 / question.options.length; // Distribuição igual por padrão
+        }
+
+        newQuotas.push({
+          category: question.category,
+          option,
+          percentage,
+          targetCount: Math.round((percentage / 100) * surveyConfig.totalParticipants),
+          currentCount: 0
+        });
+      });
+    });
+
+    setSurveyConfig(prev => ({ ...prev, quotas: newQuotas }));
+    setShowQuotaCalculator(true);
+    
+    toast({
+      title: "Cotas Calculadas",
+      description: `${newQuotas.length} cotas demográficas foram calculadas para ${surveyConfig.totalParticipants} participantes.`
+    });
   };
 
   const removeQuestion = (id: string) => {
@@ -173,9 +254,18 @@ export const CreateSurveyForm = () => {
       description: surveyDescription,
       mandatoryQuestions: enabledMandatory,
       questions: questions,
+      config: surveyConfig,
+      shareLink: `${window.location.origin}/survey/${Date.now()}`,
       createdAt: new Date(),
-      status: 'draft'
+      status: 'draft',
+      estimatedCost: calculateSurveyCost()
     };
+
+    function calculateSurveyCost() {
+      const baseCost = 0.50; // R$ 0,50 por resposta
+      const totalCost = surveyConfig.totalParticipants * baseCost;
+      return totalCost.toFixed(2);
+    }
 
     // Salvar no localStorage temporariamente
     const existingSurveys = JSON.parse(localStorage.getItem('surveys') || '[]');
@@ -215,14 +305,42 @@ export const CreateSurveyForm = () => {
           <CardDescription>Configure os detalhes básicos da sua pesquisa</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="title">Título da Pesquisa</Label>
-            <Input 
-              id="title"
-              placeholder="Ex: Pesquisa de Satisfação - Cliente X"
-              value={surveyTitle}
-              onChange={(e) => setSurveyTitle(e.target.value)}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="title">Título da Pesquisa</Label>
+              <Input 
+                id="title"
+                placeholder="Ex: Pesquisa de Satisfação - Cliente X"
+                value={surveyTitle}
+                onChange={(e) => setSurveyTitle(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="participants">Total de Participantes</Label>
+              <div className="flex gap-2">
+                <Input 
+                  id="participants"
+                  type="number"
+                  min="10"
+                  max="10000"
+                  placeholder="100"
+                  value={surveyConfig.totalParticipants}
+                  onChange={(e) => setSurveyConfig(prev => ({ 
+                    ...prev, 
+                    totalParticipants: parseInt(e.target.value) || 100 
+                  }))}
+                />
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={calculateQuotas}
+                  disabled={!surveyConfig.totalParticipants}
+                >
+                  <Calculator className="h-4 w-4 mr-1" />
+                  Calcular
+                </Button>
+              </div>
+            </div>
           </div>
           <div>
             <Label htmlFor="description">Descrição</Label>
@@ -233,14 +351,120 @@ export const CreateSurveyForm = () => {
               onChange={(e) => setSurveyDescription(e.target.value)}
             />
           </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label>Metodologia</Label>
+              <select 
+                className="w-full p-2 border rounded"
+                value={surveyConfig.methodology}
+                onChange={(e) => setSurveyConfig(prev => ({ 
+                  ...prev, 
+                  methodology: e.target.value as 'random' | 'quota' | 'stratified'
+                }))}
+              >
+                <option value="quota">Amostra por Cotas</option>
+                <option value="random">Amostra Aleatória</option>
+                <option value="stratified">Amostra Estratificada</option>
+              </select>
+            </div>
+            <div>
+              <Label>Nível de Confiança (%)</Label>
+              <Input 
+                type="number"
+                min="90"
+                max="99"
+                value={surveyConfig.confidence}
+                onChange={(e) => setSurveyConfig(prev => ({ 
+                  ...prev, 
+                  confidence: parseInt(e.target.value) || 95 
+                }))}
+              />
+            </div>
+            <div>
+              <Label>Margem de Erro (%)</Label>
+              <Input 
+                type="number"
+                min="1"
+                max="10"
+                step="0.1"
+                value={surveyConfig.margin}
+                onChange={(e) => setSurveyConfig(prev => ({ 
+                  ...prev, 
+                  margin: parseFloat(e.target.value) || 5 
+                }))}
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Quota Calculator */}
+      {showQuotaCalculator && surveyConfig.quotas.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="h-5 w-5" />
+              Cotas Demográficas Calculadas
+            </CardTitle>
+            <CardDescription>
+              Distribuição automática para {surveyConfig.totalParticipants} participantes com {surveyConfig.confidence}% de confiança e {surveyConfig.margin}% de margem de erro.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {surveyConfig.quotas.map((quota, index) => (
+                <Card key={index} className="border-l-4 border-l-blue-500">
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Badge variant="outline" className="text-xs">
+                          {quota.category === 'gender' ? 'Sexo' : 
+                           quota.category === 'age' ? 'Idade' : 'Localização'}
+                        </Badge>
+                        <span className="text-sm font-medium">{quota.percentage.toFixed(1)}%</span>
+                      </div>
+                      <p className="font-medium text-sm">{quota.option}</p>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Meta: {quota.targetCount}</span>
+                        <span>Atual: {quota.currentCount}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full" 
+                          style={{ width: `${Math.min((quota.currentCount / quota.targetCount) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowQuotaCalculator(false)}
+              >
+                Ocultar Cotas
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={calculateQuotas}
+              >
+                Recalcular
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Questions */}
       <Card>
         <CardHeader>
           <CardTitle>Perguntas</CardTitle>
-          <CardDescription>Adicione perguntas à sua pesquisa. As perguntas demográficas são obrigatórias.</CardDescription>
+          <CardDescription>Configure as perguntas demográficas obrigatórias e adicione perguntas personalizadas.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Mandatory Questions Configuration */}
@@ -323,7 +547,7 @@ export const CreateSurveyForm = () => {
           <div className="space-y-4">
             <div>
               <Label>Adicionar Pergunta</Label>
-              <div className="flex gap-2 mt-2">
+              <div className="flex flex-wrap gap-2 mt-2">
                 <Button variant="outline" size="sm" onClick={() => addQuestion('text')}>
                   <Plus className="mr-2 h-4 w-4" />
                   Texto Livre
@@ -338,7 +562,15 @@ export const CreateSurveyForm = () => {
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => addQuestion('scale')}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Escala
+                  Escala (1-5)
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => addQuestion('ranking')}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Ranking
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => addQuestion('matrix')}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Matriz
                 </Button>
               </div>
             </div>
@@ -354,7 +586,9 @@ export const CreateSurveyForm = () => {
                       <Badge variant="outline" className="text-xs">
                         {question.type === 'text' ? 'Texto Livre' : 
                          question.type === 'single' ? 'Escolha Única' :
-                         question.type === 'multiple' ? 'Múltipla Escolha' : 'Escala'}
+                         question.type === 'multiple' ? 'Múltipla Escolha' : 
+                         question.type === 'scale' ? 'Escala' :
+                         question.type === 'ranking' ? 'Ranking' : 'Matriz'}
                       </Badge>
                       {question.saved && (
                         <Badge variant="default" className="text-xs bg-green-500">
@@ -391,21 +625,79 @@ export const CreateSurveyForm = () => {
                     />
                   </div>
 
-                  {(question.type === 'single' || question.type === 'multiple') && (
+                  {/* Configurações específicas por tipo de pergunta */}
+                  {question.type === 'multiple' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Mín. Seleções</Label>
+                        <Input 
+                          type="number"
+                          min="1"
+                          value={question.minSelections || 1}
+                          onChange={(e) => updateQuestion(question.id, { minSelections: parseInt(e.target.value) || 1 })}
+                        />
+                      </div>
+                      <div>
+                        <Label>Máx. Seleções</Label>
+                        <Input 
+                          type="number"
+                          min="1"
+                          value={question.maxSelections || 3}
+                          onChange={(e) => updateQuestion(question.id, { maxSelections: parseInt(e.target.value) || 3 })}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {question.type === 'scale' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Valor Mínimo</Label>
+                        <Input 
+                          type="number"
+                          value={question.scaleMin || 1}
+                          onChange={(e) => updateQuestion(question.id, { scaleMin: parseInt(e.target.value) || 1 })}
+                        />
+                      </div>
+                      <div>
+                        <Label>Valor Máximo</Label>
+                        <Input 
+                          type="number"
+                          value={question.scaleMax || 5}
+                          onChange={(e) => updateQuestion(question.id, { scaleMax: parseInt(e.target.value) || 5 })}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {(question.type === 'single' || question.type === 'multiple' || question.type === 'ranking') && (
                     <div>
                       <Label>Opções de Resposta</Label>
                       <div className="space-y-2">
                         {question.options?.map((option, optionIndex) => (
-                          <Input
-                            key={optionIndex}
-                            placeholder={`Opção ${optionIndex + 1}`}
-                            value={option}
-                            onChange={(e) => {
-                              const newOptions = [...(question.options || [])];
-                              newOptions[optionIndex] = e.target.value;
-                              updateQuestion(question.id, { options: newOptions });
-                            }}
-                          />
+                          <div key={optionIndex} className="flex gap-2">
+                            <Input
+                              placeholder={`Opção ${optionIndex + 1}`}
+                              value={option}
+                              onChange={(e) => {
+                                const newOptions = [...(question.options || [])];
+                                newOptions[optionIndex] = e.target.value;
+                                updateQuestion(question.id, { options: newOptions });
+                              }}
+                            />
+                            {(question.options?.length || 0) > 1 && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => {
+                                  const newOptions = question.options?.filter((_, idx) => idx !== optionIndex) || [];
+                                  updateQuestion(question.id, { options: newOptions });
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         ))}
                         <Button 
                           variant="ghost" 

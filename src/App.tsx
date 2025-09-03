@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import MySurveys from "./pages/MySurveys";
 import ContactImport from "./pages/ContactImport";
 import MassDispatcher from "./pages/MassDispatcher";
+import { SurveyResponse } from "./pages/SurveyResponse";
 import { AppLayout } from "./components/layout/AppLayout";
 import { CreateSurveyForm } from "./components/sections/CreateSurveyForm";
 
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/credits" element={<AppLayout><div className="p-6"><h1>Créditos</h1><p>Em desenvolvimento...</p></div></AppLayout>} />
           <Route path="/validation" element={<AppLayout><div className="p-6"><h1>Validação</h1><p>Em desenvolvimento...</p></div></AppLayout>} />
           <Route path="/settings" element={<AppLayout><div className="p-6"><h1>Configurações</h1><p>Em desenvolvimento...</p></div></AppLayout>} />
+          <Route path="/survey/:surveyId" element={<SurveyResponse />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

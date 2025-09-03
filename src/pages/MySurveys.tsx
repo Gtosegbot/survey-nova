@@ -13,7 +13,8 @@ import {
   QrCode,
   Download,
   Users,
-  BarChart3
+  BarChart3,
+  TrendingUp
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -22,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { SurveyAnalytics } from "@/components/layout/SurveyAnalytics";
 
 interface Survey {
   id: string;
@@ -29,21 +31,96 @@ interface Survey {
   description: string;
   status: 'draft' | 'active' | 'completed';
   createdAt: string;
-  responses?: number;
+  responseCount?: number;
   mandatoryQuestions: any[];
   questions: any[];
+  config?: {
+    totalParticipants: number;
+    quotas: Array<{
+      category: string;
+      option: string;
+      targetCount: number;
+      currentCount: number;
+      percentage: number;
+    }>;
+  };
+}
+
+interface SurveyWithResponses {
+  id: string;
+  title: string;
+  config: {
+    totalParticipants: number;
+    quotas: Array<{
+      category: string;
+      option: string;
+      targetCount: number;
+      currentCount: number;
+      percentage: number;
+    }>;
+  };
+  responses: Array<{
+    id: string;
+    demographics: Record<string, string>;
+    answers: Record<string, any>;
+    timestamp: Date;
+    location?: { lat: number; lng: number };
+  }>;
 }
 
 export default function MySurveys() {
   const { toast } = useToast();
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedSurvey, setSelectedSurvey] = useState<SurveyWithResponses | null>(null);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   useEffect(() => {
     // Carregar pesquisas do localStorage
     const savedSurveys = JSON.parse(localStorage.getItem('surveys') || '[]');
     setSurveys(savedSurveys);
   }, []);
+
+  const viewAnalytics = (survey: Survey) => {
+    // Simular dados de respostas para demonstração
+    const surveyWithData: SurveyWithResponses = {
+      ...survey,
+      config: survey.config || { totalParticipants: 100, quotas: [] },
+      responses: generateMockResponses(survey)
+    };
+    
+    setSelectedSurvey(surveyWithData);
+    setShowAnalytics(true);
+  };
+
+  const generateMockResponses = (survey: Survey) => {
+    const responses = [];
+    const totalResponses = Math.floor(Math.random() * (survey.config?.totalParticipants || 100) * 0.8) || Math.floor(Math.random() * 50);
+    
+    for (let i = 0; i < totalResponses; i++) {
+      responses.push({
+        id: `response_${i}`,
+        demographics: {
+          gender: ['Masculino', 'Feminino'][Math.floor(Math.random() * 2)],
+          age: ['16-24', '25-34', '35-44', '45-59', '60+'][Math.floor(Math.random() * 5)],
+          location: ['São Paulo Capital', 'Interior SP', 'Rio de Janeiro'][Math.floor(Math.random() * 3)]
+        },
+        answers: {},
+        timestamp: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000)
+      });
+    }
+    
+    // Atualizar cotas com dados simulados
+    if (survey.config?.quotas) {
+      survey.config.quotas.forEach(quota => {
+        quota.currentCount = responses.filter(r => 
+          r.demographics[quota.category as keyof typeof r.demographics] === quota.option
+        ).length;
+      });
+    }
+    
+    return responses;
+  };
 
   const filteredSurveys = surveys.filter(survey =>
     survey.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -93,6 +170,30 @@ export default function MySurveys() {
       description: "A pesquisa foi excluída com sucesso.",
     });
   };
+
+  if (showAnalytics && selectedSurvey) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Analytics da Pesquisa</h1>
+            <p className="text-muted-foreground">{selectedSurvey.title}</p>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              setShowAnalytics(false);
+              setSelectedSurvey(null);
+            }}
+          >
+            Voltar às Pesquisas
+          </Button>
+        </div>
+        
+        <SurveyAnalytics survey={selectedSurvey} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -172,8 +273,8 @@ export default function MySurveys() {
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <BarChart3 className="mr-2 h-4 w-4" />
+                        <DropdownMenuItem onClick={() => viewAnalytics(survey)}>
+                          <TrendingUp className="mr-2 h-4 w-4" />
                           Analytics
                         </DropdownMenuItem>
                         <DropdownMenuItem>
@@ -198,7 +299,7 @@ export default function MySurveys() {
                     <span>Criada em: {new Date(survey.createdAt).toLocaleDateString('pt-BR')}</span>
                     <span className="flex items-center gap-1">
                       <Users className="h-4 w-4" />
-                      {survey.responses || 0} respostas
+                      {survey.responseCount || 0} respostas
                     </span>
                     <span>{survey.mandatoryQuestions.filter(q => q.enabled).length + survey.questions.length} perguntas</span>
                   </div>
