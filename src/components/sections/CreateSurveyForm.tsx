@@ -6,8 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Save, Settings, Check, Users, Calculator, PieChart } from "lucide-react";
+import { Plus, Trash2, Save, Settings, Check, Users, Calculator, PieChart, HelpCircle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { QuestionTypeGuide } from "./QuestionTypeGuide";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Question {
   id: string;
@@ -469,9 +476,29 @@ export const CreateSurveyForm = () => {
         <CardContent className="space-y-4">
           {/* Mandatory Questions Configuration */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              <Label className="text-base font-medium">Perguntas Obrigatórias Configuráveis</Label>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                <Label className="text-base font-medium">Perguntas Obrigatórias Configuráveis</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-md">
+                      <p className="font-medium mb-2">Como configurar:</p>
+                      <ul className="text-sm space-y-1">
+                        <li>• <strong>Localização:</strong> Customize por região, cidade, bairro ou zona</li>
+                        <li>• <strong>Sexo:</strong> Ajuste opções (2 sexos, 3+ opções, etc.)</li>
+                        <li>• <strong>Idade:</strong> Configure faixas etárias específicas</li>
+                        <li>• Essas perguntas geram as cotas demográficas da pesquisa</li>
+                        <li>• Ative/desative conforme sua necessidade</li>
+                      </ul>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <QuestionTypeGuide onSelectType={(type) => addQuestion(type as Question['type'])} />
             </div>
             
             {mandatoryQuestions.map((mandatoryQ) => (

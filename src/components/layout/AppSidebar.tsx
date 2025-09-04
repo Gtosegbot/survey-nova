@@ -49,7 +49,7 @@ const navigationItems = [
     items: [
       { title: "Créditos", url: "/credits", icon: CreditCard },
       { title: "Importar Contatos", url: "/contacts/import", icon: Users },
-      { title: "Disparador", url: "/mass-dispatcher", icon: Send },
+      { title: "Disparadores", url: "/dispatchers", icon: Send },
       { title: "Validação", url: "/validation", icon: Shield },
     ]
   },
