@@ -335,6 +335,87 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          permissions: Json | null
+          plan_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          permissions?: Json | null
+          plan_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          permissions?: Json | null
+          plan_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sms_logs: {
+        Row: {
+          campaign_id: string | null
+          cost: number | null
+          created_at: string
+          delivery_info: Json | null
+          id: string
+          message: string
+          phone: string
+          provider_response: Json | null
+          reference_id: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          cost?: number | null
+          created_at?: string
+          delivery_info?: Json | null
+          id?: string
+          message: string
+          phone: string
+          provider_response?: Json | null
+          reference_id?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          cost?: number | null
+          created_at?: string
+          delivery_info?: Json | null
+          id?: string
+          message?: string
+          phone?: string
+          provider_response?: Json | null
+          reference_id?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       social_posts: {
         Row: {
           ai_generated: boolean | null
@@ -377,6 +458,119 @@ export type Database = {
           status?: string | null
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      survey_responses: {
+        Row: {
+          answers: Json
+          completed_at: string | null
+          confidence_score: number | null
+          coordinates: unknown | null
+          demographics: Json
+          id: string
+          ip_address: unknown | null
+          is_valid: boolean | null
+          respondent_data: Json
+          survey_id: string
+          user_agent: string | null
+          validation_data: Json | null
+        }
+        Insert: {
+          answers?: Json
+          completed_at?: string | null
+          confidence_score?: number | null
+          coordinates?: unknown | null
+          demographics?: Json
+          id?: string
+          ip_address?: unknown | null
+          is_valid?: boolean | null
+          respondent_data: Json
+          survey_id: string
+          user_agent?: string | null
+          validation_data?: Json | null
+        }
+        Update: {
+          answers?: Json
+          completed_at?: string | null
+          confidence_score?: number | null
+          coordinates?: unknown | null
+          demographics?: Json
+          id?: string
+          ip_address?: unknown | null
+          is_valid?: boolean | null
+          respondent_data?: Json
+          survey_id?: string
+          user_agent?: string | null
+          validation_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_responses_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      surveys: {
+        Row: {
+          created_at: string
+          current_responses: number | null
+          description: string | null
+          estimated_cost: number | null
+          expires_at: string | null
+          id: string
+          is_public: boolean | null
+          mandatory_questions: Json
+          methodology: string | null
+          published_at: string | null
+          questions: Json
+          quotas: Json | null
+          status: string | null
+          target_sample_size: number | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_responses?: number | null
+          description?: string | null
+          estimated_cost?: number | null
+          expires_at?: string | null
+          id?: string
+          is_public?: boolean | null
+          mandatory_questions?: Json
+          methodology?: string | null
+          published_at?: string | null
+          questions?: Json
+          quotas?: Json | null
+          status?: string | null
+          target_sample_size?: number | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_responses?: number | null
+          description?: string | null
+          estimated_cost?: number | null
+          expires_at?: string | null
+          id?: string
+          is_public?: boolean | null
+          mandatory_questions?: Json
+          methodology?: string | null
+          published_at?: string | null
+          questions?: Json
+          quotas?: Json | null
+          status?: string | null
+          target_sample_size?: number | null
+          title?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
