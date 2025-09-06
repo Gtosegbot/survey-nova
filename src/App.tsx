@@ -3,7 +3,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./hooks/useAuth";
 import Index from "./pages/Index";
+import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import MySurveys from "./pages/MySurveys";
@@ -15,38 +17,44 @@ import AICreator from "./pages/AICreator";
 import AIResearcher from "./pages/AIResearcher";
 import Validation from "./pages/Validation";
 import Team from "./pages/Team";
+import Dispatchers from "./pages/Dispatchers";
+import Settings from "./pages/Settings";
 import { SurveyResponse } from "./pages/SurveyResponse";
 import { AppLayout } from "./components/layout/AppLayout";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import { CreateSurveyForm } from "./components/sections/CreateSurveyForm";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
-          <Route path="/my-surveys" element={<AppLayout><div className="p-6"><MySurveys /></div></AppLayout>} />
-          <Route path="/surveys" element={<AppLayout><div className="p-6"><CreateSurveyForm /></div></AppLayout>} />
-          <Route path="/contacts/import" element={<AppLayout><div className="p-6"><ContactImport /></div></AppLayout>} />
-          <Route path="/mass-dispatcher" element={<AppLayout><div className="p-6"><MassDispatcher /></div></AppLayout>} />
-          <Route path="/analytics" element={<AppLayout><Analytics /></AppLayout>} />
-          <Route path="/ai-creator" element={<AppLayout><AICreator /></AppLayout>} />
-          <Route path="/ai-researcher" element={<AppLayout><AIResearcher /></AppLayout>} />
-          <Route path="/credits" element={<AppLayout><Credits /></AppLayout>} />
-          <Route path="/validation" element={<AppLayout><Validation /></AppLayout>} />
-          <Route path="/team" element={<AppLayout><Team /></AppLayout>} />
-          <Route path="/settings" element={<AppLayout><div className="p-6"><h1>Configurações</h1><p>Em desenvolvimento...</p></div></AppLayout>} />
-          <Route path="/survey/:surveyId" element={<SurveyResponse />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
+            <Route path="/my-surveys" element={<ProtectedRoute><AppLayout><div className="p-6"><MySurveys /></div></AppLayout></ProtectedRoute>} />
+            <Route path="/surveys" element={<ProtectedRoute><AppLayout><div className="p-6"><CreateSurveyForm /></div></AppLayout></ProtectedRoute>} />
+            <Route path="/contacts/import" element={<ProtectedRoute><AppLayout><div className="p-6"><ContactImport /></div></AppLayout></ProtectedRoute>} />
+            <Route path="/mass-dispatcher" element={<ProtectedRoute><AppLayout><div className="p-6"><MassDispatcher /></div></AppLayout></ProtectedRoute>} />
+            <Route path="/dispatchers" element={<ProtectedRoute><AppLayout><div className="p-6"><Dispatchers /></div></AppLayout></ProtectedRoute>} />
+            <Route path="/analytics" element={<ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>} />
+            <Route path="/ai-creator" element={<ProtectedRoute><AppLayout><AICreator /></AppLayout></ProtectedRoute>} />
+            <Route path="/ai-researcher" element={<ProtectedRoute><AppLayout><AIResearcher /></AppLayout></ProtectedRoute>} />
+            <Route path="/credits" element={<ProtectedRoute><AppLayout><Credits /></AppLayout></ProtectedRoute>} />
+            <Route path="/validation" element={<ProtectedRoute><AppLayout><Validation /></AppLayout></ProtectedRoute>} />
+            <Route path="/team" element={<ProtectedRoute><AppLayout><Team /></AppLayout></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><AppLayout><div className="p-6"><Settings /></div></AppLayout></ProtectedRoute>} />
+            <Route path="/survey/:surveyId" element={<SurveyResponse />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

@@ -1,8 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { Menu, Search } from "lucide-react";
+import { Menu } from "lucide-react";
 import tepesquiseiLogo from "@/assets/tepesquisei-logo.png";
 
-export const Header = () => {
+interface HeaderProps {
+  onGetStarted?: () => void;
+}
+
+export const Header = ({ onGetStarted }: HeaderProps) => {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
@@ -31,10 +35,10 @@ export const Header = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" className="hidden md:flex">
+          <Button variant="ghost" size="sm" className="hidden md:flex" onClick={onGetStarted}>
             Entrar
           </Button>
-          <Button variant="hero" size="sm">
+          <Button variant="hero" size="sm" onClick={onGetStarted}>
             Começar Grátis
           </Button>
           <Button variant="ghost" size="icon" className="md:hidden">

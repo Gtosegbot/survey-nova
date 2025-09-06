@@ -2,7 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Sparkles, Shield, Zap } from "lucide-react";
 
-export const CallToActionSection = () => {
+interface CallToActionSectionProps {
+  onGetStarted?: () => void;
+}
+
+export const CallToActionSection = ({ onGetStarted }: CallToActionSectionProps) => {
   return (
     <section className="py-24 bg-gradient-primary relative overflow-hidden">
       {/* Decorative Elements */}
@@ -52,6 +56,7 @@ export const CallToActionSection = () => {
               size="lg" 
               variant="secondary"
               className="group px-8 py-4 text-lg bg-white text-primary hover:bg-white/90"
+              onClick={onGetStarted}
             >
               Criar Primeira Pesquisa Grátis
               <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />

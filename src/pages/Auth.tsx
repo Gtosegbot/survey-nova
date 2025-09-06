@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   Mail, 
   Lock, 
@@ -18,10 +18,11 @@ import {
   Zap
 } from "lucide-react";
 import tepesquiseiLogo from "@/assets/tepesquisei-logo.png";
+import { useNavigate } from "react-router-dom";
 
 export default function Auth() {
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const { signIn, signUp, user, isLoading } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -30,36 +31,24 @@ export default function Auth() {
     company: ""
   });
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      // Simulate login
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Redirecionando para o dashboard..."
-      });
-      
-      // Redirect to dashboard
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 1000);
-      
-    } catch (error) {
-      toast({
-        title: "Erro no login",
-        description: "Verifique suas credenciais e tente novamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+    
+    const { error } = await signIn(formData.email, formData.password);
+    
+    if (!error) {
+      navigate('/dashboard');
     }
   };
 
@@ -67,38 +56,13 @@ export default function Auth() {
     e.preventDefault();
     
     if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Erro",
-        description: "As senhas não conferem.",
-        variant: "destructive"
-      });
       return;
     }
 
-    setIsLoading(true);
-
-    try {
-      // Simulate signup
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast({
-        title: "Cadastro realizado com sucesso!",
-        description: "Bem-vindo ao Te Pesquisei! Redirecionando..."
-      });
-      
-      // Redirect to dashboard
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 1000);
-      
-    } catch (error) {
-      toast({
-        title: "Erro no cadastro",
-        description: "Não foi possível criar sua conta. Tente novamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+    const { error } = await signUp(formData.email, formData.password, formData.name);
+    
+    if (!error) {
+      navigate('/dashboard');
     }
   };
 

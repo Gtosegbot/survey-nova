@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_agents: {
         Row: {
           conversation_count: number | null
@@ -342,8 +363,10 @@ export type Database = {
           display_name: string | null
           email: string | null
           id: string
+          is_admin: boolean | null
           permissions: Json | null
           plan_type: string | null
+          role: string | null
           updated_at: string
           user_id: string
         }
@@ -353,8 +376,10 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          is_admin?: boolean | null
           permissions?: Json | null
           plan_type?: string | null
+          role?: string | null
           updated_at?: string
           user_id: string
         }
@@ -364,12 +389,64 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          is_admin?: boolean | null
           permissions?: Json | null
           plan_type?: string | null
+          role?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      response_validation: {
+        Row: {
+          coordinates: unknown | null
+          created_at: string
+          device_fingerprint: string | null
+          duplicate_score: number | null
+          id: string
+          ip_address: unknown | null
+          is_duplicate: boolean | null
+          response_id: string
+          user_agent: string | null
+          validation_status: string | null
+          voice_signature: string | null
+        }
+        Insert: {
+          coordinates?: unknown | null
+          created_at?: string
+          device_fingerprint?: string | null
+          duplicate_score?: number | null
+          id?: string
+          ip_address?: unknown | null
+          is_duplicate?: boolean | null
+          response_id: string
+          user_agent?: string | null
+          validation_status?: string | null
+          voice_signature?: string | null
+        }
+        Update: {
+          coordinates?: unknown | null
+          created_at?: string
+          device_fingerprint?: string | null
+          duplicate_score?: number | null
+          id?: string
+          ip_address?: unknown | null
+          is_duplicate?: boolean | null
+          response_id?: string
+          user_agent?: string | null
+          validation_status?: string | null
+          voice_signature?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "response_validation_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "survey_responses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sms_logs: {
         Row: {
@@ -461,6 +538,50 @@ export type Database = {
         }
         Relationships: []
       }
+      survey_links: {
+        Row: {
+          channel_type: string
+          created_at: string
+          created_by: string
+          credit_cost: number | null
+          id: string
+          link_id: string
+          recipient: string | null
+          survey_id: string
+          used_at: string | null
+        }
+        Insert: {
+          channel_type: string
+          created_at?: string
+          created_by: string
+          credit_cost?: number | null
+          id?: string
+          link_id: string
+          recipient?: string | null
+          survey_id: string
+          used_at?: string | null
+        }
+        Update: {
+          channel_type?: string
+          created_at?: string
+          created_by?: string
+          credit_cost?: number | null
+          id?: string
+          link_id?: string
+          recipient?: string | null
+          survey_id?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_links_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       survey_responses: {
         Row: {
           answers: Json
@@ -516,14 +637,18 @@ export type Database = {
       }
       surveys: {
         Row: {
+          auto_stop_at_quota: boolean | null
           created_at: string
           current_responses: number | null
+          demographic_breakdown: Json | null
           description: string | null
           estimated_cost: number | null
           expires_at: string | null
+          geographic_quotas: Json | null
           id: string
           is_public: boolean | null
           mandatory_questions: Json
+          max_responses_per_location: number | null
           methodology: string | null
           published_at: string | null
           questions: Json
@@ -535,14 +660,18 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          auto_stop_at_quota?: boolean | null
           created_at?: string
           current_responses?: number | null
+          demographic_breakdown?: Json | null
           description?: string | null
           estimated_cost?: number | null
           expires_at?: string | null
+          geographic_quotas?: Json | null
           id?: string
           is_public?: boolean | null
           mandatory_questions?: Json
+          max_responses_per_location?: number | null
           methodology?: string | null
           published_at?: string | null
           questions?: Json
@@ -554,14 +683,18 @@ export type Database = {
           user_id: string
         }
         Update: {
+          auto_stop_at_quota?: boolean | null
           created_at?: string
           current_responses?: number | null
+          demographic_breakdown?: Json | null
           description?: string | null
           estimated_cost?: number | null
           expires_at?: string | null
+          geographic_quotas?: Json | null
           id?: string
           is_public?: boolean | null
           mandatory_questions?: Json
+          max_responses_per_location?: number | null
           methodology?: string | null
           published_at?: string | null
           questions?: Json
@@ -609,6 +742,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_survey_quotas: {
+        Args: { survey_uuid: string }
+        Returns: boolean
+      }
+      is_user_admin: {
+        Args: { user_email: string }
+        Returns: boolean
+      }
       update_user_credits: {
         Args: {
           p_amount: number

@@ -3,7 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Play, Sparkles, Brain, TrendingUp } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
 
-export const HeroSection = () => {
+interface HeroSectionProps {
+  onGetStarted?: () => void;
+}
+
+export const HeroSection = ({ onGetStarted }: HeroSectionProps) => {
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-background via-secondary/30 to-accent/10">
       {/* Background Image */}
@@ -63,7 +67,7 @@ export const HeroSection = () => {
               size="lg" 
               variant="hero" 
               className="group px-8 py-4 text-lg"
-              onClick={() => window.location.href = '/dashboard'}
+              onClick={onGetStarted}
             >
               Criar Primeira Pesquisa
               <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
@@ -73,7 +77,7 @@ export const HeroSection = () => {
               size="lg" 
               variant="outline" 
               className="group px-8 py-4 text-lg border-primary/20 hover:border-primary/40"
-              onClick={() => window.location.href = '/dashboard'}
+              onClick={onGetStarted}
             >
               <Play className="mr-2 h-5 w-5" />
               Testar Grátis
