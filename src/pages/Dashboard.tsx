@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
 import { 
   Plus, 
   BarChart3, 
@@ -68,6 +69,8 @@ const recentSurveys = [
 ];
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -79,11 +82,11 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => window.location.href = '/ai-creator'}>
+          <Button variant="outline" onClick={() => navigate('/ai-creator')}>
             <Brain className="mr-2 h-4 w-4" />
             Criar com IA
           </Button>
-          <Button onClick={() => window.location.href = '/surveys'}>
+          <Button onClick={() => navigate('/surveys')}>
             <Plus className="mr-2 h-4 w-4" />
             Nova Pesquisa
           </Button>
@@ -161,19 +164,19 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button className="w-full justify-start" variant="outline" onClick={() => window.location.href = '/surveys'}>
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/surveys')}>
               <Plus className="mr-2 h-4 w-4" />
               Criar Nova Pesquisa
             </Button>
-            <Button className="w-full justify-start" variant="outline" onClick={() => window.location.href = '/ai-creator'}>
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/ai-creator')}>
               <Brain className="mr-2 h-4 w-4" />
               Assistente IA
             </Button>
-            <Button className="w-full justify-start" variant="outline" onClick={() => window.location.href = '/analytics'}>
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/analytics')}>
               <BarChart3 className="mr-2 h-4 w-4" />
               Ver Analytics
             </Button>
-            <Button className="w-full justify-start" variant="outline" onClick={() => window.location.href = '/team'}>
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/team')}>
               <Users className="mr-2 h-4 w-4" />
               Gerenciar Equipe
             </Button>

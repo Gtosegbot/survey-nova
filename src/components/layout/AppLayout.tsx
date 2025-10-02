@@ -2,8 +2,9 @@ import { ReactNode } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Button } from "@/components/ui/button";
-import { Bell, User, LogOut } from "lucide-react";
+import { Bell, User, LogOut, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +18,7 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { profile, signOut } = useAuth();
+  const { profile, roles, isAdmin, signOut } = useAuth();
 
   return (
     <SidebarProvider defaultOpen={false}>
@@ -50,8 +51,20 @@ export function AppLayout({ children }: AppLayoutProps) {
                   <div className="px-2 py-1.5">
                     <p className="text-sm font-medium">{profile?.display_name || profile?.email}</p>
                     <p className="text-xs text-muted-foreground">{profile?.email}</p>
-                    {profile?.is_admin && (
-                      <p className="text-xs text-primary font-medium">Administrador</p>
+                    {isAdmin() && (
+                      <Badge variant="default" className="mt-1">
+                        <Shield className="h-3 w-3 mr-1" />
+                        Administrador
+                      </Badge>
+                    )}
+                    {roles.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {roles.map(role => (
+                          <Badge key={role} variant="secondary" className="text-xs">
+                            {role}
+                          </Badge>
+                        ))}
+                      </div>
                     )}
                   </div>
                   <DropdownMenuSeparator />
