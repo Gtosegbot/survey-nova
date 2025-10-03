@@ -86,7 +86,7 @@ export default function Surveys() {
   };
 
   const handleShare = async (survey: Survey) => {
-    const shareLink = `${window.location.origin}/survey-response/${survey.id}`;
+    const shareLink = `${window.location.origin}/survey/${survey.id}`;
     await navigator.clipboard.writeText(shareLink);
     toast({
       title: "Link copiado!",

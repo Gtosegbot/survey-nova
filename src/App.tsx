@@ -35,7 +35,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/survey-response/:surveyId" element={<SurveyResponse />} />
+            <Route path="/survey/:surveyId" element={<SurveyResponse />} />
             <Route path="/dashboard" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
             <Route path="/surveys" element={<ProtectedRoute><AppLayout><Surveys /></AppLayout></ProtectedRoute>} />
             <Route path="/contacts/import" element={<ProtectedRoute><AppLayout><div className="p-6"><ContactImport /></div></AppLayout></ProtectedRoute>} />
