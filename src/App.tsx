@@ -8,7 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
-import MySurveys from "./pages/MySurveys";
+import Surveys from "./pages/Surveys";
 import ContactImport from "./pages/ContactImport";
 import MassDispatcher from "./pages/MassDispatcher";
 import Analytics from "./pages/Analytics";
@@ -22,7 +22,6 @@ import Settings from "./pages/Settings";
 import { SurveyResponse } from "./pages/SurveyResponse";
 import { AppLayout } from "./components/layout/AppLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { CreateSurveyForm } from "./components/sections/CreateSurveyForm";
 
 const queryClient = new QueryClient();
 
@@ -36,9 +35,9 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/survey-response/:surveyId" element={<SurveyResponse />} />
             <Route path="/dashboard" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
-            <Route path="/my-surveys" element={<ProtectedRoute><AppLayout><div className="p-6"><MySurveys /></div></AppLayout></ProtectedRoute>} />
-            <Route path="/surveys" element={<ProtectedRoute><AppLayout><div className="p-6"><CreateSurveyForm /></div></AppLayout></ProtectedRoute>} />
+            <Route path="/surveys" element={<ProtectedRoute><AppLayout><Surveys /></AppLayout></ProtectedRoute>} />
             <Route path="/contacts/import" element={<ProtectedRoute><AppLayout><div className="p-6"><ContactImport /></div></AppLayout></ProtectedRoute>} />
             <Route path="/mass-dispatcher" element={<ProtectedRoute><AppLayout><div className="p-6"><MassDispatcher /></div></AppLayout></ProtectedRoute>} />
             <Route path="/dispatchers" element={<ProtectedRoute><AppLayout><div className="p-6"><Dispatchers /></div></AppLayout></ProtectedRoute>} />
@@ -49,7 +48,6 @@ const App = () => (
             <Route path="/validation" element={<ProtectedRoute><AppLayout><Validation /></AppLayout></ProtectedRoute>} />
             <Route path="/team" element={<ProtectedRoute><AppLayout><Team /></AppLayout></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><AppLayout><div className="p-6"><Settings /></div></AppLayout></ProtectedRoute>} />
-            <Route path="/survey/:surveyId" element={<SurveyResponse />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

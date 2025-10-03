@@ -21,7 +21,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header onGetStarted={handleGetStarted} />
+      <Header />
       <main className="flex-1">
         <HeroSection onGetStarted={handleGetStarted} />
         <FeaturesSection />
