@@ -12,8 +12,8 @@ import { ChevronLeft, ChevronRight, CheckCircle, MapPin, Clock, Loader2 } from "
 interface Survey {
   id: string;
   title: string;
-  description: string;
-  questions: any[];
+  description: string | null;
+  questions: any;
   mandatory_questions: any;
   target_sample_size: number;
   current_responses: number;
@@ -64,7 +64,7 @@ export const SurveyResponse = () => {
         if (error) throw error;
 
         if (data) {
-          setSurvey(data);
+          setSurvey(data as Survey);
           // Subscribe to real-time updates
           subscribeToSurveyUpdates(surveyId);
         }
@@ -95,7 +95,7 @@ export const SurveyResponse = () => {
           filter: `id=eq.${id}`
         },
         (payload) => {
-          setSurvey(prev => prev ? { ...prev, ...payload.new } : null);
+          setSurvey(prev => prev ? { ...prev, ...payload.new } as Survey : null);
         }
       )
       .subscribe();
@@ -141,12 +141,12 @@ export const SurveyResponse = () => {
 
     if (responseError) throw responseError;
 
-    // Increment response count
-    const { error: updateError } = await supabase.rpc('increment_survey_responses', {
-      survey_uuid: responseData.surveyId
-    });
+      // Increment response count
+      const { error: updateError } = await supabase.rpc('increment_survey_responses' as any, {
+        survey_uuid: responseData.surveyId
+      });
 
-    if (updateError) console.error('Error updating count:', updateError);
+      if (updateError) console.error('Error updating count:', updateError);
   };
 
   if (!survey) {

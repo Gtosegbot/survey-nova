@@ -774,6 +774,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_survey_responses: {
+        Args: { survey_uuid: string }
+        Returns: undefined
+      }
       is_user_admin: {
         Args: { user_email: string }
         Returns: boolean
