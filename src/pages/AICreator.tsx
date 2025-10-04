@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import {
   Brain,
   Send,
@@ -28,6 +30,16 @@ interface Message {
   suggestions?: string[];
 }
 
+interface SurveyContext {
+  theme?: string;
+  objective?: string;
+  targetAudience?: string;
+  sampleSize?: number;
+  ageRanges?: string[];
+  methodology?: string;
+  readyToCreate?: boolean;
+}
+
 interface SurveyStep {
   id: string;
   title: string;
@@ -38,6 +50,7 @@ interface SurveyStep {
 
 export default function AICreator() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -55,6 +68,7 @@ export default function AICreator() {
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [surveyContext, setSurveyContext] = useState<SurveyContext>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const surveySteps: SurveyStep[] = [
@@ -103,94 +117,147 @@ export default function AICreator() {
     scrollToBottom();
   }, [messages]);
 
-  const simulateAIResponse = (userMessage: string): string => {
-    const lowerMessage = userMessage.toLowerCase();
-    
-    if (lowerMessage.includes('satisfação') || lowerMessage.includes('cliente')) {
-      return `Excelente! Uma pesquisa de satisfação do cliente é fundamental para o crescimento do negócio. 
+  const callAIRotation = async (conversationHistory: Message[]): Promise<string> => {
+    try {
+      const formattedMessages = conversationHistory.map(msg => ({
+        role: msg.type === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      }));
 
-Agora preciso entender melhor:
+      const systemPrompt = `Você é um especialista em metodologia de pesquisa. Seu objetivo é ajudar o usuário a criar uma pesquisa completa e profissional.
 
-**Objetivos específicos:**
-- Você quer medir satisfação geral ou aspectos específicos (atendimento, produto, preço)?
-- Há alguma métrica atual que você quer melhorar?
-- Esta pesquisa é para benchmarking interno ou comparação com concorrentes?
+CONTEXTO ATUAL:
+${JSON.stringify(surveyContext, null, 2)}
 
-**Público-alvo:**
-- Clientes atuais, ex-clientes ou ambos?
-- Algum segmento específico (idade, região, tipo de produto)?
-- Quantos clientes você estima ter na base?
+INSTRUÇÕES IMPORTANTES:
+1. Faça perguntas específicas e diretas, UMA DE CADA VEZ
+2. Não repita perguntas já respondidas
+3. Evolua a conversa baseado no contexto
+4. Quando tiver TODAS as informações necessárias (tema, público, tamanho da amostra, faixas etárias), responda EXATAMENTE: "CRIAR_PESQUISA_AGORA"
+5. Seja breve e objetivo
 
-**Metodologia sugerida:** Amostra estratificada com 300-500 respondentes para margem de erro de 5% com 95% de confiança.
+INFORMAÇÕES NECESSÁRIAS PARA CRIAR A PESQUISA:
+- Tema da pesquisa
+- Objetivo principal
+- Público-alvo
+- Tamanho da amostra (número de participantes)
+- Faixas etárias específicas
+- Metodologia (cotas, aleatória, estratificada)
 
-Me conte mais sobre esses pontos para eu criar a pesquisa perfeita para você!`;
+PROGRESSÃO LÓGICA:
+1. Se não sabe o tema → Pergunte o tema
+2. Se sabe o tema mas não o público → Pergunte sobre público-alvo
+3. Se sabe público mas não amostra → Pergunte tamanho da amostra
+4. Se sabe amostra mas não faixas etárias → Pergunte faixas etárias específicas
+5. Se tem TUDO → Responda "CRIAR_PESQUISA_AGORA"
+
+Não fique repetindo as mesmas perguntas genéricas.`;
+
+      const { data, error } = await supabase.functions.invoke('ai-rotation', {
+        body: { 
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...formattedMessages
+          ]
+        }
+      });
+
+      if (error) throw error;
+
+      const aiMessage = data?.choices?.[0]?.message?.content || 
+        'Desculpe, tive um problema. Pode repetir?';
+
+      return aiMessage;
+    } catch (error) {
+      console.error('Error calling AI:', error);
+      return 'Desculpe, estou tendo problemas técnicos. Tente novamente em alguns instantes.';
     }
-    
-    if (lowerMessage.includes('voto') || lowerMessage.includes('político') || lowerMessage.includes('eleição')) {
-      return `Pesquisas políticas requerem cuidado especial com imparcialidade e metodologia rigorosa.
+  };
 
-**Considerações importantes:**
-- **Imparcialidade absoluta:** Perguntas neutras sem induzir respostas
-- **Amostra representativa:** Por idade, gênero, região, classe social
-- **Timing:** Proximidade da eleição afeta volatilidade
+  const createSurveyAutomatically = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Você precisa estar logado para criar pesquisas.",
+          variant: "destructive"
+        });
+        return;
+      }
 
-**Informações necessárias:**
-- Eleição específica (municipal, estadual, federal)?
-- Região de abrangência (cidade, estado, país)?
-- Intenção de voto, rejeição ou aprovação?
-- Orçamento disponível para a pesquisa?
+      const surveyData = {
+        user_id: user.id,
+        title: `Pesquisa ${surveyContext.theme || 'Política'} - Candidato A vs B`,
+        description: `Pesquisa criada pela IA sobre ${surveyContext.theme}`,
+        target_sample_size: surveyContext.sampleSize || 10,
+        methodology: surveyContext.methodology || 'quota',
+        mandatory_questions: {
+          age: {
+            title: "Qual sua faixa etária?",
+            options: surveyContext.ageRanges || ["16-24", "25-34", "35-44", "45-59", "60+"],
+            enabled: true
+          },
+          gender: {
+            title: "Qual seu sexo?",
+            options: ["Masculino", "Feminino", "Outro"],
+            enabled: true
+          }
+        },
+        questions: [
+          {
+            id: "q1",
+            type: "single",
+            title: "Se a eleição fosse hoje, em quem você votaria para presidente?",
+            options: ["Candidato A", "Candidato B", "Branco/Nulo", "Não sei"],
+            required: true
+          },
+          {
+            id: "q2",
+            type: "scale",
+            title: "De 0 a 10, qual sua confiança no sistema eleitoral?",
+            scaleMin: 0,
+            scaleMax: 10,
+            required: true
+          },
+          {
+            id: "q3",
+            type: "multiple",
+            title: "Quais temas são mais importantes para você? (escolha até 3)",
+            options: ["Economia", "Saúde", "Educação", "Segurança", "Meio Ambiente"],
+            maxSelections: 3,
+            required: true
+          }
+        ],
+        is_public: true,
+        status: 'draft'
+      };
 
-**Metodologia recomendada:** 
-- Mínimo 1.000 entrevistas para margem confiável
-- Cotas proporcionais por região e demografia
-- Perguntas de controle para detectar vieses
+      const { data: survey, error } = await supabase
+        .from('surveys')
+        .insert(surveyData)
+        .select()
+        .single();
 
-Vamos começar definindo o escopo exato da sua pesquisa eleitoral.`;
+      if (error) throw error;
+
+      toast({
+        title: "Pesquisa criada com sucesso!",
+        description: "Sua pesquisa foi criada pela IA e está pronta para ser publicada.",
+      });
+
+      setTimeout(() => {
+        navigate('/surveys');
+      }, 1500);
+
+    } catch (error: any) {
+      console.error('Error creating survey:', error);
+      toast({
+        title: "Erro ao criar pesquisa",
+        description: error.message || "Tente novamente.",
+        variant: "destructive"
+      });
     }
-    
-    if (lowerMessage.includes('produto') || lowerMessage.includes('mercado')) {
-      return `Pesquisa de mercado para produtos é essencial antes de lançamentos ou melhorias.
-
-**Etapas que sugiro:**
-
-1. **Análise de aceitação:**
-   - Conceito do produto/serviço
-   - Preço ideal vs. percepção de valor
-   - Comparação com alternativas existentes
-
-2. **Público-alvo:**
-   - Demografia do cliente ideal
-   - Comportamento de compra
-   - Canais de preferência
-
-3. **Teste de conceito:**
-   - Apresentação do produto
-   - Intenção de compra
-   - Sugestões de melhoria
-
-**Perguntas que vou criar:**
-- Evitar vieses de confirmação
-- Testar aceitação de forma neutra
-- Medir disposição real de pagamento
-
-Me conte mais sobre seu produto e objetivos específicos para personalizar a pesquisa!`;
-    }
-
-    return `Entendi seu interesse em "${userMessage}". Para criar a melhor pesquisa possível, preciso de mais detalhes:
-
-**Informações importantes:**
-- Qual o objetivo principal desta pesquisa?
-- Quem é seu público-alvo ideal?
-- Há algum prazo específico?
-- Qual o orçamento disponível?
-
-**Próximos passos:**
-1. Definir metodologia adequada
-2. Calcular tamanho da amostra
-3. Criar perguntas imparciais
-4. Configurar cotas demográficas
-
-Compartilhe mais detalhes para eu personalizar tudo para suas necessidades!`;
   };
 
   const handleSendMessage = async () => {
@@ -203,16 +270,58 @@ Compartilhe mais detalhes para eu personalizar tudo para suas necessidades!`;
       timestamp: new Date()
     };
 
+    // Update context based on user input
+    const lowerInput = inputMessage.toLowerCase();
+    const newContext = { ...surveyContext };
+    
+    if (lowerInput.includes('político') || lowerInput.includes('voto') || lowerInput.includes('eleição')) {
+      newContext.theme = 'Intenção de Voto Político';
+    } else if (lowerInput.includes('satisfação') || lowerInput.includes('cliente')) {
+      newContext.theme = 'Satisfação do Cliente';
+    }
+    
+    // Detectar tamanho da amostra
+    const numberMatch = inputMessage.match(/\d+/);
+    if (numberMatch && lowerInput.includes('pessoa') || lowerInput.includes('participante')) {
+      newContext.sampleSize = parseInt(numberMatch[0]);
+    }
+    
+    // Detectar faixas etárias
+    if (lowerInput.includes('16-24') || lowerInput.includes('faixa')) {
+      newContext.ageRanges = ["16-24", "25-34", "35-44", "45-59", "60+"];
+    }
+
+    setSurveyContext(newContext);
     setMessages(prev => [...prev, userMessage]);
     setInputMessage("");
     setIsLoading(true);
 
-    // Simulate AI processing
-    setTimeout(() => {
+    try {
+      const aiResponseContent = await callAIRotation([...messages, userMessage]);
+      
+      // Check if AI is ready to create survey
+      if (aiResponseContent.includes('CRIAR_PESQUISA_AGORA')) {
+        const readyMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'assistant',
+          content: '✅ Perfeito! Tenho todas as informações necessárias. Vou criar sua pesquisa agora...',
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, readyMessage]);
+        setIsLoading(false);
+        
+        // Create survey automatically
+        setTimeout(() => {
+          createSurveyAutomatically();
+        }, 1000);
+        return;
+      }
+
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: simulateAIResponse(inputMessage),
+        content: aiResponseContent,
         timestamp: new Date(),
         suggestions: [
           'Definir público específico',
@@ -227,9 +336,12 @@ Compartilhe mais detalhes para eu personalizar tudo para suas necessidades!`;
       
       // Progress simulation
       if (currentStep < surveySteps.length - 1) {
-        setTimeout(() => setCurrentStep(prev => prev + 1), 1000);
+        setTimeout(() => setCurrentStep(prev => prev + 1), 500);
       }
-    }, 2000);
+    } catch (error) {
+      console.error('Error in message handling:', error);
+      setIsLoading(false);
+    }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
