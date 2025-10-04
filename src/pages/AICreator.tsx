@@ -176,6 +176,7 @@ Não fique repetindo as mesmas perguntas genéricas.`;
 
   const createSurveyAutomatically = async () => {
     try {
+      setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast({
@@ -188,8 +189,8 @@ Não fique repetindo as mesmas perguntas genéricas.`;
 
       const surveyData = {
         user_id: user.id,
-        title: `Pesquisa ${surveyContext.theme || 'Política'} - Candidato A vs B`,
-        description: `Pesquisa criada pela IA sobre ${surveyContext.theme}`,
+        title: `Pesquisa ${surveyContext.theme || 'Intenção de Voto'} - Candidato A vs B`,
+        description: `Pesquisa criada pela IA sobre ${surveyContext.theme}. Amostra: ${surveyContext.sampleSize} pessoas.`,
         target_sample_size: surveyContext.sampleSize || 10,
         methodology: surveyContext.methodology || 'quota',
         mandatory_questions: {
@@ -230,8 +231,11 @@ Não fique repetindo as mesmas perguntas genéricas.`;
           }
         ],
         is_public: true,
-        status: 'draft'
+        status: 'active',
+        current_responses: 0
       };
+
+      console.log('📝 Creating survey in database:', surveyData);
 
       const { data: survey, error } = await supabase
         .from('surveys')
@@ -239,11 +243,16 @@ Não fique repetindo as mesmas perguntas genéricas.`;
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Database error:', error);
+        throw error;
+      }
+
+      console.log('✅ Survey created successfully:', survey);
 
       toast({
-        title: "Pesquisa criada com sucesso!",
-        description: "Sua pesquisa foi criada pela IA e está pronta para ser publicada.",
+        title: "✅ Pesquisa criada com sucesso!",
+        description: `Pesquisa "${survey.title}" foi criada e está ativa.`,
       });
 
       setTimeout(() => {
@@ -251,12 +260,14 @@ Não fique repetindo as mesmas perguntas genéricas.`;
       }, 1500);
 
     } catch (error: any) {
-      console.error('Error creating survey:', error);
+      console.error('❌ Error creating survey:', error);
       toast({
         title: "Erro ao criar pesquisa",
         description: error.message || "Tente novamente.",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -304,17 +315,14 @@ Não fique repetindo as mesmas perguntas genéricas.`;
         const readyMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: 'assistant',
-          content: '✅ Perfeito! Tenho todas as informações necessárias. Vou criar sua pesquisa agora...',
+          content: '✅ Perfeito! Tenho todas as informações necessárias:\n\n📊 Tema: ' + (surveyContext.theme || 'Intenção de Voto') + '\n👥 Amostra: ' + (surveyContext.sampleSize || 10) + ' pessoas\n📅 Faixas etárias: ' + (surveyContext.ageRanges?.length || 5) + ' faixas\n\n🚀 Criando sua pesquisa no banco de dados...',
           timestamp: new Date()
         };
         
         setMessages(prev => [...prev, readyMessage]);
-        setIsLoading(false);
         
-        // Create survey automatically
-        setTimeout(() => {
-          createSurveyAutomatically();
-        }, 1000);
+        // Create survey immediately
+        await createSurveyAutomatically();
         return;
       }
 

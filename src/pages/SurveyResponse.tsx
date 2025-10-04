@@ -127,8 +127,10 @@ export const SurveyResponse = () => {
   };
 
   const submitResponseToSupabase = async (responseData: any) => {
+    console.log('📤 Submitting survey response:', responseData);
+    
     // Submit response
-    const { error: responseError } = await supabase
+    const { data: savedResponse, error: responseError } = await supabase
       .from('survey_responses')
       .insert({
         survey_id: responseData.surveyId,
@@ -136,17 +138,30 @@ export const SurveyResponse = () => {
         answers: responseData.responses,
         demographics: responseData.demographics || {},
         ip_address: responseData.ipAddress,
-        user_agent: navigator.userAgent
-      });
+        user_agent: navigator.userAgent,
+        is_valid: true,
+        confidence_score: 1.0
+      })
+      .select()
+      .single();
 
-    if (responseError) throw responseError;
+    if (responseError) {
+      console.error('❌ Error saving response:', responseError);
+      throw responseError;
+    }
 
-      // Increment response count
-      const { error: updateError } = await supabase.rpc('increment_survey_responses' as any, {
-        survey_uuid: responseData.surveyId
-      });
+    console.log('✅ Response saved:', savedResponse);
 
-      if (updateError) console.error('Error updating count:', updateError);
+    // Increment response count
+    const { error: updateError } = await supabase.rpc('increment_survey_responses' as any, {
+      survey_uuid: responseData.surveyId
+    });
+
+    if (updateError) {
+      console.error('⚠️ Error incrementing counter:', updateError);
+    } else {
+      console.log('✅ Survey response counter incremented');
+    }
   };
 
   if (!survey) {
