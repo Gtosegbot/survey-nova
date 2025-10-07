@@ -15,6 +15,8 @@ import {
   Download
 } from "lucide-react";
 import { SurveyAnalytics } from "@/components/layout/SurveyAnalytics";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface AnalyticsData {
   totalSurveys: number;
@@ -40,6 +42,7 @@ interface AnalyticsData {
 }
 
 export default function Analytics() {
+  const { toast } = useToast();
   const [timeRange, setTimeRange] = useState("7d");
   const [selectedSurvey, setSelectedSurvey] = useState<string>("all");
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -47,97 +50,147 @@ export default function Analytics() {
   const [detailedSurvey, setDetailedSurvey] = useState<any>(null);
 
   useEffect(() => {
-    // Carregar dados de analytics
     loadAnalytics();
   }, [timeRange, selectedSurvey]);
 
-  const loadAnalytics = () => {
-    // Carregar pesquisas do localStorage
-    const savedSurveys = JSON.parse(localStorage.getItem('surveys') || '[]');
-    const savedResponses = JSON.parse(localStorage.getItem('survey_responses') || '[]');
+  const loadAnalytics = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    // Calcular métricas
-    const totalSurveys = savedSurveys.length;
-    const activeSurveys = savedSurveys.filter((s: any) => s.status === 'active').length;
-    const totalResponses = savedResponses.length;
-    const avgCompletionRate = totalSurveys > 0 ? (totalResponses / (totalSurveys * 100)) * 100 : 0;
+      // Carregar pesquisas reais do Supabase
+      const { data: surveys, error: surveysError } = await supabase
+        .from('surveys')
+        .select('*')
+        .eq('user_id', user.id);
 
-    // Simular dados de performance
-    const surveyPerformance = savedSurveys.map((survey: any) => {
-      const responses = Math.floor(Math.random() * 200);
-      const target = survey.config?.totalParticipants || 100;
-      return {
-        id: survey.id,
-        title: survey.title,
-        responses,
-        target,
-        completionRate: target > 0 ? Math.min((responses / target) * 100, 100) : 0,
-        status: survey.status
-      };
-    });
+      if (surveysError) throw surveysError;
 
-    const recentActivity = [
-      {
-        id: '1',
-        type: 'response' as const,
-        message: 'Nova resposta recebida para "Pesquisa de Satisfação"',
-        timestamp: '5 min atrás'
-      },
-      {
-        id: '2',
-        type: 'survey_created' as const,
-        message: 'Pesquisa "Intenção de Voto" foi criada',
-        timestamp: '2 horas atrás'
-      },
-      {
-        id: '3',
-        type: 'survey_completed' as const,
-        message: 'Pesquisa "Mercado Imobiliário" atingiu 100% das respostas',
-        timestamp: '1 dia atrás'
-      }
-    ];
+      // Carregar respostas reais do Supabase
+      const { data: allResponses, error: responsesError } = await supabase
+        .from('survey_responses')
+        .select('*')
+        .in('survey_id', surveys?.map(s => s.id) || []);
 
-    setAnalytics({
-      totalSurveys,
-      activeSurveys,
-      totalResponses,
-      avgCompletionRate,
-      weeklyGrowth: 15.5,
-      topPerformingSurvey: surveyPerformance[0]?.title || 'Nenhuma',
-      recentActivity,
-      surveyPerformance
-    });
+      if (responsesError) throw responsesError;
+
+      const totalSurveys = surveys?.length || 0;
+      const activeSurveys = surveys?.filter(s => s.status === 'active').length || 0;
+      const totalResponses = allResponses?.length || 0;
+      const avgCompletionRate = totalSurveys > 0 
+        ? (totalResponses / surveys.reduce((acc, s) => acc + (s.target_sample_size || 100), 0)) * 100 
+        : 0;
+
+      // Dados de performance reais
+      const surveyPerformance = surveys?.map(survey => {
+        const responses = allResponses?.filter(r => r.survey_id === survey.id).length || 0;
+        const target = survey.target_sample_size || 100;
+        return {
+          id: survey.id,
+          title: survey.title,
+          responses,
+          target,
+          completionRate: target > 0 ? Math.min((responses / target) * 100, 100) : 0,
+          status: (survey.status || 'draft') as 'active' | 'completed' | 'draft'
+        };
+      }) || [];
+
+      // Atividades recentes reais
+      const recentActivity = allResponses?.slice(0, 3).map((response, i) => {
+        const survey = surveys?.find(s => s.id === response.survey_id);
+        return {
+          id: response.id,
+          type: 'response' as const,
+          message: `Nova resposta para "${survey?.title || 'Pesquisa'}"`,
+          timestamp: new Date(response.completed_at || '').toLocaleString('pt-BR')
+        };
+      }) || [];
+
+      setAnalytics({
+        totalSurveys,
+        activeSurveys,
+        totalResponses,
+        avgCompletionRate,
+        weeklyGrowth: 15.5,
+        topPerformingSurvey: surveyPerformance[0]?.title || 'Nenhuma',
+        recentActivity,
+        surveyPerformance
+      });
+    } catch (error: any) {
+      console.error('Erro ao carregar analytics:', error);
+      toast({
+        title: "Erro ao carregar analytics",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
-  const viewDetailedAnalytics = (survey: any) => {
-    // Gerar dados detalhados da pesquisa
-    const detailedData = {
-      id: survey.id,
-      title: survey.title,
-      config: {
-        totalParticipants: survey.target,
-        quotas: [
-          { category: 'gender', option: 'Masculino', targetCount: Math.floor(survey.target * 0.5), currentCount: Math.floor(survey.responses * 0.45), percentage: 45 },
-          { category: 'gender', option: 'Feminino', targetCount: Math.floor(survey.target * 0.5), currentCount: Math.floor(survey.responses * 0.55), percentage: 55 },
-          { category: 'age', option: '25-34', targetCount: Math.floor(survey.target * 0.3), currentCount: Math.floor(survey.responses * 0.35), percentage: 35 },
-          { category: 'age', option: '35-44', targetCount: Math.floor(survey.target * 0.3), currentCount: Math.floor(survey.responses * 0.25), percentage: 25 },
-        ]
-      },
-      responses: Array.from({ length: survey.responses }, (_, i) => ({
-        id: `response_${i}`,
-        demographics: {
-          gender: Math.random() > 0.5 ? 'Masculino' : 'Feminino',
-          age: ['25-34', '35-44', '45-54'][Math.floor(Math.random() * 3)],
-          location: 'São Paulo'
-        },
-        answers: {},
-        timestamp: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-        location: { lat: -23.5505, lng: -46.6333 }
-      }))
-    };
+  const viewDetailedAnalytics = async (survey: any) => {
+    try {
+      // Carregar respostas reais do Supabase
+      const { data: responses, error } = await supabase
+        .from('survey_responses')
+        .select('*')
+        .eq('survey_id', survey.id);
 
-    setDetailedSurvey(detailedData);
-    setShowDetailedAnalytics(true);
+      if (error) throw error;
+
+      // Analisar demografia real
+      const genderCounts: Record<string, number> = {};
+      const ageCounts: Record<string, number> = {};
+
+      responses?.forEach(r => {
+        const demographics = r.demographics as any;
+        const gender = demographics?.gender || 'Não informado';
+        const age = demographics?.age || 'Não informado';
+        genderCounts[gender] = (genderCounts[gender] || 0) + 1;
+        ageCounts[age] = (ageCounts[age] || 0) + 1;
+      });
+
+      const quotas = [
+        ...Object.entries(genderCounts).map(([key, val]) => ({
+          category: 'gender',
+          option: key,
+          targetCount: Math.floor(survey.target * 0.5),
+          currentCount: val,
+          percentage: (val / (responses?.length || 1)) * 100
+        })),
+        ...Object.entries(ageCounts).map(([key, val]) => ({
+          category: 'age',
+          option: key,
+          targetCount: Math.floor(survey.target * 0.25),
+          currentCount: val,
+          percentage: (val / (responses?.length || 1)) * 100
+        }))
+      ];
+
+      const detailedData = {
+        id: survey.id,
+        title: survey.title,
+        config: {
+          totalParticipants: survey.target,
+          quotas
+        },
+        responses: responses?.map(r => ({
+          id: r.id,
+          demographics: r.demographics || {},
+          answers: r.answers || {},
+          timestamp: new Date(r.completed_at || ''),
+          location: r.coordinates ? { lat: r.coordinates[0], lng: r.coordinates[1] } : undefined
+        })) || []
+      };
+
+      setDetailedSurvey(detailedData);
+      setShowDetailedAnalytics(true);
+    } catch (error: any) {
+      console.error('Erro ao carregar detalhes:', error);
+      toast({
+        title: "Erro ao carregar detalhes",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   if (showDetailedAnalytics && detailedSurvey) {
