@@ -183,13 +183,15 @@ Se ainda falta informação crítica, pergunte APENAS o que falta.`;
           description: "Você precisa estar logado para criar pesquisas.",
           variant: "destructive"
         });
+        setIsLoading(false);
         return;
       }
 
+      const surveyTitle = `Pesquisa: ${surveyContext.theme || 'Sem Tema'}`;
       const surveyData = {
         user_id: user.id,
-        title: `Pesquisa ${surveyContext.theme || 'Intenção de Voto'} - Candidato A vs B`,
-        description: `Pesquisa criada pela IA sobre ${surveyContext.theme}. Amostra: ${surveyContext.sampleSize} pessoas.`,
+        title: surveyTitle,
+        description: `Pesquisa criada pela IA sobre ${surveyContext.theme}. Tamanho da amostra: ${surveyContext.sampleSize} participantes.`,
         target_sample_size: surveyContext.sampleSize || 10,
         methodology: surveyContext.methodology || 'quota',
         mandatory_questions: {
@@ -199,8 +201,12 @@ Se ainda falta informação crítica, pergunte APENAS o que falta.`;
             enabled: true
           },
           gender: {
-            title: "Qual seu sexo?",
+            title: "Qual seu gênero?",
             options: ["Masculino", "Feminino", "Outro"],
+            enabled: true
+          },
+          location: {
+            title: "Qual sua cidade/estado?",
             enabled: true
           }
         },
@@ -208,25 +214,23 @@ Se ainda falta informação crítica, pergunte APENAS o que falta.`;
           {
             id: "q1",
             type: "single",
-            title: "Se a eleição fosse hoje, em quem você votaria para presidente?",
-            options: ["Candidato A", "Candidato B", "Branco/Nulo", "Não sei"],
+            title: `Qual sua opinião sobre ${surveyContext.theme || 'o tema'}?`,
+            options: ["Muito positivo", "Positivo", "Neutro", "Negativo", "Muito negativo"],
             required: true
           },
           {
             id: "q2",
             type: "scale",
-            title: "De 0 a 10, qual sua confiança no sistema eleitoral?",
+            title: "De 0 a 10, qual sua satisfação geral?",
             scaleMin: 0,
             scaleMax: 10,
             required: true
           },
           {
             id: "q3",
-            type: "multiple",
-            title: "Quais temas são mais importantes para você? (escolha até 3)",
-            options: ["Economia", "Saúde", "Educação", "Segurança", "Meio Ambiente"],
-            maxSelections: 3,
-            required: true
+            type: "text",
+            title: "Comentários adicionais (opcional)",
+            required: false
           }
         ],
         is_public: true,
@@ -234,7 +238,7 @@ Se ainda falta informação crítica, pergunte APENAS o que falta.`;
         current_responses: 0
       };
 
-      console.log('📝 Creating survey in database:', surveyData);
+      console.log('📝 Criando pesquisa no banco:', surveyData);
 
       const { data: survey, error } = await supabase
         .from('surveys')
@@ -243,29 +247,28 @@ Se ainda falta informação crítica, pergunte APENAS o que falta.`;
         .single();
 
       if (error) {
-        console.error('❌ Database error:', error);
+        console.error('❌ Erro ao salvar no banco:', error);
         throw error;
       }
 
-      console.log('✅ Survey created successfully:', survey);
+      console.log('✅ Pesquisa criada com ID:', survey.id);
 
       toast({
-        title: "✅ Pesquisa criada com sucesso!",
-        description: `Pesquisa "${survey.title}" foi criada e está ativa.`,
+        title: "✅ Pesquisa criada!",
+        description: `"${survey.title}" está ativa e pronta para receber respostas.`,
       });
 
       setTimeout(() => {
         navigate('/surveys');
-      }, 1500);
+      }, 2000);
 
     } catch (error: any) {
-      console.error('❌ Error creating survey:', error);
+      console.error('❌ Erro ao criar pesquisa:', error);
       toast({
         title: "Erro ao criar pesquisa",
         description: error.message || "Tente novamente.",
         variant: "destructive"
       });
-    } finally {
       setIsLoading(false);
     }
   };
