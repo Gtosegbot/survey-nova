@@ -119,39 +119,34 @@ export default function AICreator() {
 
   const callAIRotation = async (conversationHistory: Message[]): Promise<string> => {
     try {
+      console.log('🤖 Calling AI with context:', surveyContext);
+      
       const formattedMessages = conversationHistory.map(msg => ({
         role: msg.type === 'user' ? 'user' : 'assistant',
         content: msg.content
       }));
 
-      const systemPrompt = `Você é um especialista em metodologia de pesquisa. Seu objetivo é ajudar o usuário a criar uma pesquisa completa e profissional.
+      const systemPrompt = `Você é um especialista em metodologia de pesquisa. Analise o contexto e ajude a criar a pesquisa.
 
-CONTEXTO ATUAL:
-${JSON.stringify(surveyContext, null, 2)}
+CONTEXTO ATUAL DA PESQUISA:
+- Tema: ${surveyContext.theme || 'NÃO DEFINIDO'}
+- Tamanho da amostra: ${surveyContext.sampleSize || 'NÃO DEFINIDO'}
+- Faixas etárias: ${surveyContext.ageRanges ? 'DEFINIDAS' : 'NÃO DEFINIDAS'}
 
-INSTRUÇÕES IMPORTANTES:
-1. Faça perguntas específicas e diretas, UMA DE CADA VEZ
-2. Não repita perguntas já respondidas
-3. Evolua a conversa baseado no contexto
-4. Quando tiver TODAS as informações necessárias (tema, público, tamanho da amostra, faixas etárias), responda EXATAMENTE: "CRIAR_PESQUISA_AGORA"
-5. Seja breve e objetivo
+REGRAS CRÍTICAS:
+1. Se o usuário mencionar um TEMA + NÚMERO DE PESSOAS, você DEVE criar a pesquisa imediatamente
+2. NUNCA repita perguntas já respondidas
+3. Seja MUITO direto e objetivo
+4. Quando o usuário fornecer tema e quantidade, responda APENAS: "CRIAR_PESQUISA_AGORA"
 
-INFORMAÇÕES NECESSÁRIAS PARA CRIAR A PESQUISA:
-- Tema da pesquisa
-- Objetivo principal
-- Público-alvo
-- Tamanho da amostra (número de participantes)
-- Faixas etárias específicas
-- Metodologia (cotas, aleatória, estratificada)
+EXEMPLOS:
+User: "Intenção de voto político para 10 pessoas"
+Assistant: "CRIAR_PESQUISA_AGORA"
 
-PROGRESSÃO LÓGICA:
-1. Se não sabe o tema → Pergunte o tema
-2. Se sabe o tema mas não o público → Pergunte sobre público-alvo
-3. Se sabe público mas não amostra → Pergunte tamanho da amostra
-4. Se sabe amostra mas não faixas etárias → Pergunte faixas etárias específicas
-5. Se tem TUDO → Responda "CRIAR_PESQUISA_AGORA"
+User: "Pesquisa de satisfação com 50 participantes"
+Assistant: "CRIAR_PESQUISA_AGORA"
 
-Não fique repetindo as mesmas perguntas genéricas.`;
+Se ainda falta informação crítica, pergunte APENAS o que falta.`;
 
       const { data, error } = await supabase.functions.invoke('ai-rotation', {
         body: { 
@@ -162,14 +157,18 @@ Não fique repetindo as mesmas perguntas genéricas.`;
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ AI API Error:', error);
+        throw error;
+      }
 
       const aiMessage = data?.choices?.[0]?.message?.content || 
         'Desculpe, tive um problema. Pode repetir?';
 
+      console.log('🤖 AI Response:', aiMessage);
       return aiMessage;
     } catch (error) {
-      console.error('Error calling AI:', error);
+      console.error('❌ Error calling AI:', error);
       return 'Desculpe, estou tendo problemas técnicos. Tente novamente em alguns instantes.';
     }
   };
@@ -281,47 +280,82 @@ Não fique repetindo as mesmas perguntas genéricas.`;
       timestamp: new Date()
     };
 
-    // Update context based on user input
+    // Update context based on user input - DETECÇÃO MELHORADA
     const lowerInput = inputMessage.toLowerCase();
     const newContext = { ...surveyContext };
     
-    if (lowerInput.includes('político') || lowerInput.includes('voto') || lowerInput.includes('eleição')) {
+    // Detectar tema
+    if (lowerInput.includes('político') || lowerInput.includes('voto') || lowerInput.includes('eleição') || lowerInput.includes('candidato')) {
       newContext.theme = 'Intenção de Voto Político';
     } else if (lowerInput.includes('satisfação') || lowerInput.includes('cliente')) {
       newContext.theme = 'Satisfação do Cliente';
+    } else if (lowerInput.includes('produto')) {
+      newContext.theme = 'Aceitação de Produto';
+    } else if (!newContext.theme) {
+      // Extrai o tema da primeira mensagem do usuário
+      newContext.theme = inputMessage.substring(0, 50);
     }
     
-    // Detectar tamanho da amostra
+    // Detectar tamanho da amostra - MELHORADO
     const numberMatch = inputMessage.match(/\d+/);
-    if (numberMatch && lowerInput.includes('pessoa') || lowerInput.includes('participante')) {
-      newContext.sampleSize = parseInt(numberMatch[0]);
+    if (numberMatch) {
+      const number = parseInt(numberMatch[0]);
+      if (number > 0 && number < 100000) {
+        newContext.sampleSize = number;
+      }
     }
     
     // Detectar faixas etárias
-    if (lowerInput.includes('16-24') || lowerInput.includes('faixa')) {
+    if (lowerInput.includes('16-24') || lowerInput.includes('faixa') || lowerInput.includes('idade')) {
       newContext.ageRanges = ["16-24", "25-34", "35-44", "45-59", "60+"];
     }
 
+    // Detectar metodologia
+    if (lowerInput.includes('cota')) {
+      newContext.methodology = 'quota';
+    }
+
+    console.log('📝 Updated context:', newContext);
     setSurveyContext(newContext);
     setMessages(prev => [...prev, userMessage]);
     setInputMessage("");
     setIsLoading(true);
 
     try {
-      const aiResponseContent = await callAIRotation([...messages, userMessage]);
+      // VERIFICAÇÃO DIRETA: Se tem tema + tamanho, cria imediatamente
+      const hasTheme = !!newContext.theme;
+      const hasSampleSize = !!newContext.sampleSize && newContext.sampleSize > 0;
       
-      // Check if AI is ready to create survey
-      if (aiResponseContent.includes('CRIAR_PESQUISA_AGORA')) {
+      if (hasTheme && hasSampleSize) {
+        console.log('✅ Contexto completo detectado! Criando pesquisa...');
+        
         const readyMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: 'assistant',
-          content: '✅ Perfeito! Tenho todas as informações necessárias:\n\n📊 Tema: ' + (surveyContext.theme || 'Intenção de Voto') + '\n👥 Amostra: ' + (surveyContext.sampleSize || 10) + ' pessoas\n📅 Faixas etárias: ' + (surveyContext.ageRanges?.length || 5) + ' faixas\n\n🚀 Criando sua pesquisa no banco de dados...',
+          content: `✅ Perfeito! Detectei:\n\n📊 Tema: ${newContext.theme}\n👥 Amostra: ${newContext.sampleSize} pessoas\n\n🚀 Criando sua pesquisa agora...`,
           timestamp: new Date()
         };
         
         setMessages(prev => [...prev, readyMessage]);
+        await createSurveyAutomatically();
+        return;
+      }
+
+      // Se não tem info suficiente, chama a IA
+      const aiResponseContent = await callAIRotation([...messages, userMessage]);
+      
+      // Check if AI is ready to create survey
+      if (aiResponseContent.includes('CRIAR_PESQUISA_AGORA')) {
+        console.log('🤖 IA sinalizou para criar pesquisa');
         
-        // Create survey immediately
+        const readyMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'assistant',
+          content: `✅ Entendi! Vou criar:\n\n📊 ${newContext.theme || 'Pesquisa'}\n👥 ${newContext.sampleSize || 10} participantes\n\n🚀 Criando no banco de dados...`,
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, readyMessage]);
         await createSurveyAutomatically();
         return;
       }
@@ -347,7 +381,7 @@ Não fique repetindo as mesmas perguntas genéricas.`;
         setTimeout(() => setCurrentStep(prev => prev + 1), 500);
       }
     } catch (error) {
-      console.error('Error in message handling:', error);
+      console.error('❌ Error in message handling:', error);
       setIsLoading(false);
     }
   };

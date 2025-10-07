@@ -127,7 +127,7 @@ export const SurveyResponse = () => {
   };
 
   const submitResponseToSupabase = async (responseData: any) => {
-    console.log('📤 Submitting survey response:', responseData);
+    console.log('📤 Submitting survey response to database:', responseData);
     
     // Submit response
     const { data: savedResponse, error: responseError } = await supabase
@@ -146,22 +146,25 @@ export const SurveyResponse = () => {
       .single();
 
     if (responseError) {
-      console.error('❌ Error saving response:', responseError);
+      console.error('❌ Error saving response to database:', responseError);
       throw responseError;
     }
 
-    console.log('✅ Response saved:', savedResponse);
+    console.log('✅ Response saved to database:', savedResponse);
 
-    // Increment response count
-    const { error: updateError } = await supabase.rpc('increment_survey_responses' as any, {
+    // Increment response count using the database function
+    console.log('📊 Incrementing survey response counter...');
+    const { error: updateError } = await supabase.rpc('increment_survey_responses', {
       survey_uuid: responseData.surveyId
     });
 
     if (updateError) {
       console.error('⚠️ Error incrementing counter:', updateError);
     } else {
-      console.log('✅ Survey response counter incremented');
+      console.log('✅ Survey response counter incremented successfully');
     }
+
+    return savedResponse;
   };
 
   if (!survey) {
@@ -204,6 +207,7 @@ export const SurveyResponse = () => {
   };
 
   const submitSurvey = async () => {
+    console.log('📝 Starting survey submission...');
     setIsSubmitting(true);
     
     try {
@@ -213,36 +217,46 @@ export const SurveyResponse = () => {
         submittedAt: new Date().toISOString(),
         demographics: {
           gender: responses['gender'],
-          age: responses['age_range'],
+          age: responses['age'] || responses['age_range'],
           location: responses['location']
         },
         respondentData: {},
         ipAddress: null
       };
 
+      console.log('📋 Response data prepared:', responseData);
+
       if (isOnline) {
+        console.log('🌐 Online - Submitting to Supabase...');
         await submitResponseToSupabase(responseData);
+        
         toast({
-          title: "Obrigado!",
-          description: "Sua resposta foi enviada com sucesso.",
+          title: "✅ Obrigado!",
+          description: "Sua resposta foi registrada com sucesso no banco de dados.",
         });
+
+        console.log('✅ Survey submitted successfully');
+        
+        // Navigate to thank you step
+        setCurrentStep(totalSteps - 1);
       } else {
+        console.log('📴 Offline - Saving locally...');
         // Save offline
         const offlineResponses = JSON.parse(localStorage.getItem('offline_responses') || '[]');
         offlineResponses.push(responseData);
         localStorage.setItem('offline_responses', JSON.stringify(offlineResponses));
         
         toast({
-          title: "Salvo offline",
+          title: "💾 Salvo offline",
           description: "Sua resposta será enviada quando a conexão for restaurada.",
         });
+
+        setCurrentStep(totalSteps - 1);
       }
-      
-      setCurrentStep(totalSteps - 1);
     } catch (error: any) {
-      console.error('Error submitting survey:', error);
+      console.error('❌ Error submitting survey:', error);
       toast({
-        title: "Erro",
+        title: "Erro ao enviar",
         description: error.message || "Erro ao enviar resposta. Tente novamente.",
         variant: "destructive"
       });
