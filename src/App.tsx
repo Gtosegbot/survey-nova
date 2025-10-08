@@ -19,6 +19,7 @@ import Validation from "./pages/Validation";
 import Team from "./pages/Team";
 import Dispatchers from "./pages/Dispatchers";
 import Settings from "./pages/Settings";
+import CreateSurvey from "./pages/CreateSurvey";
 import { SurveyResponse } from "./pages/SurveyResponse";
 import { AppLayout } from "./components/layout/AppLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/dispatchers" element={<ProtectedRoute><AppLayout><div className="p-6"><Dispatchers /></div></AppLayout></ProtectedRoute>} />
             <Route path="/analytics" element={<ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>} />
             <Route path="/ai-creator" element={<ProtectedRoute><AppLayout><AICreator /></AppLayout></ProtectedRoute>} />
+            <Route path="/create-survey" element={<ProtectedRoute><AppLayout><CreateSurvey /></AppLayout></ProtectedRoute>} />
             <Route path="/ai-researcher" element={<ProtectedRoute><AppLayout><AIResearcher /></AppLayout></ProtectedRoute>} />
             <Route path="/credits" element={<ProtectedRoute><AppLayout><Credits /></AppLayout></ProtectedRoute>} />
             <Route path="/validation" element={<ProtectedRoute><AppLayout><Validation /></AppLayout></ProtectedRoute>} />

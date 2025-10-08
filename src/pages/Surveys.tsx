@@ -134,10 +134,16 @@ export default function Surveys() {
             Gerencie e acompanhe suas pesquisas
           </p>
         </div>
-        <Button onClick={() => navigate('/ai-creator')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Pesquisa com IA
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => navigate('/ai-creator')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova com IA
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/create-survey')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Criar Manual
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-2">
@@ -214,7 +220,11 @@ export default function Surveys() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleShare(survey)}>
+                       <DropdownMenuItem onClick={() => navigate(`/create-survey?edit=${survey.id}`)}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Editar
+                      </DropdownMenuItem>
+                       <DropdownMenuItem onClick={() => handleShare(survey)}>
                         <Copy className="h-4 w-4 mr-2" />
                         Copiar Link
                       </DropdownMenuItem>

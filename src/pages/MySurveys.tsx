@@ -149,10 +149,16 @@ export default function MySurveys() {
           <h1 className="text-3xl font-bold">Minhas Pesquisas</h1>
           <p className="text-muted-foreground">Gerencie suas pesquisas criadas</p>
         </div>
-        <Button onClick={() => navigate('/ai-creator')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Pesquisa com IA
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => navigate('/ai-creator')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova com IA
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/create-survey')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Criar Manual
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -204,6 +210,10 @@ export default function MySurveys() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => navigate(`/create-survey?edit=${survey.id}`)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Editar
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleShare(survey)}>
                           <Share2 className="mr-2 h-4 w-4" />
                           Compartilhar Link

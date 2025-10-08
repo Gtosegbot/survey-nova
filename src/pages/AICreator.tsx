@@ -37,6 +37,9 @@ interface SurveyContext {
   sampleSize?: number;
   ageRanges?: string[];
   methodology?: string;
+  location?: string;
+  specificQuestions?: string[];
+  candidates?: string[];
   readyToCreate?: boolean;
 }
 
@@ -55,7 +58,7 @@ export default function AICreator() {
     {
       id: '1',
       type: 'assistant',
-      content: 'Olá! Sou sua IA especialista em metodologia de pesquisa. Vou te ajudar a criar uma pesquisa estatisticamente válida e imparcial. Primeiro, me conte: qual é o tema da sua pesquisa?',
+      content: 'Olá! Sou sua IA especialista em metodologia de pesquisa. Vou te ajudar a criar uma pesquisa completa e estatisticamente válida.\n\nVou coletar as seguintes informações antes de criar a pesquisa:\n1. Tema da pesquisa\n2. Público-alvo e localização\n3. Tamanho da amostra\n4. Perguntas específicas (se houver)\n5. Metodologia\n\nPrimeiro, me conte: qual é o tema da sua pesquisa?',
       timestamp: new Date(),
       suggestions: [
         'Pesquisa de satisfação do cliente',
@@ -325,26 +328,8 @@ Se ainda falta informação crítica, pergunte APENAS o que falta.`;
     setIsLoading(true);
 
     try {
-      // VERIFICAÇÃO DIRETA: Se tem tema + tamanho, cria imediatamente
-      const hasTheme = !!newContext.theme;
-      const hasSampleSize = !!newContext.sampleSize && newContext.sampleSize > 0;
-      
-      if (hasTheme && hasSampleSize) {
-        console.log('✅ Contexto completo detectado! Criando pesquisa...');
-        
-        const readyMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          type: 'assistant',
-          content: `✅ Perfeito! Detectei:\n\n📊 Tema: ${newContext.theme}\n👥 Amostra: ${newContext.sampleSize} pessoas\n\n🚀 Criando sua pesquisa agora...`,
-          timestamp: new Date()
-        };
-        
-        setMessages(prev => [...prev, readyMessage]);
-        await createSurveyAutomatically();
-        return;
-      }
-
-      // Se não tem info suficiente, chama a IA
+      // DESABILITADO: Criação automática rápida - agora a IA deve coletar TODAS as informações
+      // Sempre chama a IA primeiro para coletar informações completas
       const aiResponseContent = await callAIRotation([...messages, userMessage]);
       
       // Check if AI is ready to create survey
