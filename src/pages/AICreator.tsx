@@ -58,13 +58,12 @@ export default function AICreator() {
     {
       id: '1',
       type: 'assistant',
-      content: 'Olá! Sou sua IA especialista em metodologia de pesquisa. Vou te ajudar a criar uma pesquisa completa e estatisticamente válida.\n\nVou coletar as seguintes informações antes de criar a pesquisa:\n1. Tema da pesquisa\n2. Público-alvo e localização\n3. Tamanho da amostra\n4. Perguntas específicas (se houver)\n5. Metodologia\n\nPrimeiro, me conte: qual é o tema da sua pesquisa?',
+      content: 'Olá! Sou sua IA especialista em metodologia de pesquisa. Vou te ajudar a criar uma pesquisa completa e estatisticamente válida.\n\n📝 **Primeira etapa**: Preciso que você me descreva em um **prompt detalhado** tudo que você quer saber na pesquisa.\n\nPor favor, inclua:\n✅ Tema da pesquisa\n✅ Quem deve responder (público-alvo)\n✅ Onde será aplicada (localização)\n✅ Quantas pessoas (tamanho da amostra)\n✅ Perguntas específicas que quer fazer\n✅ Como será aplicada (presencial, online, telefone, etc.)\n\nQuanto mais detalhado você for, melhor ficará sua pesquisa!',
       timestamp: new Date(),
       suggestions: [
-        'Pesquisa de satisfação do cliente',
-        'Intenção de voto político',
-        'Aceitação de novo produto',
-        'Avaliação de marca'
+        'Intenção de voto para prefeito em SP com 300 pessoas, candidatos: João Silva e Maria Santos',
+        'Satisfação do cliente sobre produto X com 100 pessoas em todo Brasil',
+        'Aceitação de novo aplicativo para 50 jovens de 18-25 anos em capitais'
       ]
     }
   ]);
@@ -131,25 +130,21 @@ export default function AICreator() {
 
       const systemPrompt = `Você é um especialista em metodologia de pesquisa. Analise o contexto e ajude a criar a pesquisa.
 
-CONTEXTO ATUAL DA PESQUISA:
+CONTEXTO ATUAL:
 - Tema: ${surveyContext.theme || 'NÃO DEFINIDO'}
 - Tamanho da amostra: ${surveyContext.sampleSize || 'NÃO DEFINIDO'}
-- Faixas etárias: ${surveyContext.ageRanges ? 'DEFINIDAS' : 'NÃO DEFINIDAS'}
+- Localização: ${surveyContext.location || 'NÃO DEFINIDA'}
+- Candidatos: ${surveyContext.candidates?.join(', ') || 'NÃO DEFINIDOS'}
+- Perguntas específicas: ${surveyContext.specificQuestions?.join('; ') || 'NÃO DEFINIDAS'}
 
-REGRAS CRÍTICAS:
-1. Se o usuário mencionar um TEMA + NÚMERO DE PESSOAS, você DEVE criar a pesquisa imediatamente
-2. NUNCA repita perguntas já respondidas
-3. Seja MUITO direto e objetivo
-4. Quando o usuário fornecer tema e quantidade, responda APENAS: "CRIAR_PESQUISA_AGORA"
+REGRAS DE ANÁLISE:
+1. Se TODAS as informações obrigatórias estão completas (tema, amostra, localização, perguntas específicas), responda: "CRIAR_PESQUISA_AGORA"
+2. Se falta informação, pergunte especificamente o que falta
+3. Para pesquisas POLÍTICAS: exija nomes dos candidatos
+4. Para pesquisas de PRODUTO: exija características do produto
+5. NUNCA repita perguntas já respondidas
 
-EXEMPLOS:
-User: "Intenção de voto político para 10 pessoas"
-Assistant: "CRIAR_PESQUISA_AGORA"
-
-User: "Pesquisa de satisfação com 50 participantes"
-Assistant: "CRIAR_PESQUISA_AGORA"
-
-Se ainda falta informação crítica, pergunte APENAS o que falta.`;
+Seja direto e objetivo.`;
 
       const { data, error } = await supabase.functions.invoke('ai-rotation', {
         body: { 
@@ -191,10 +186,68 @@ Se ainda falta informação crítica, pergunte APENAS o que falta.`;
       }
 
       const surveyTitle = `Pesquisa: ${surveyContext.theme || 'Sem Tema'}`;
+      // Gerar perguntas baseadas no contexto
+      const generatedQuestions = [];
+      
+      // Para pesquisas políticas com candidatos
+      if (surveyContext.candidates && surveyContext.candidates.length > 0) {
+        generatedQuestions.push({
+          id: "q1",
+          type: "single",
+          title: "Se a eleição fosse hoje, em qual candidato você votaria?",
+          options: [...surveyContext.candidates, "Nenhum/Branco/Nulo", "Não sei"],
+          required: true
+        });
+        generatedQuestions.push({
+          id: "q2",
+          type: "single",
+          title: "Como você avalia sua intenção de voto?",
+          options: ["Totalmente decidido", "Provavelmente votarei neste", "Ainda posso mudar", "Muito indeciso"],
+          required: true
+        });
+      } else {
+        // Perguntas genéricas
+        generatedQuestions.push({
+          id: "q1",
+          type: "single",
+          title: `Qual sua opinião sobre ${surveyContext.theme || 'o tema'}?`,
+          options: ["Muito positivo", "Positivo", "Neutro", "Negativo", "Muito negativo"],
+          required: true
+        });
+      }
+
+      generatedQuestions.push({
+        id: "q" + (generatedQuestions.length + 1),
+        type: "scale",
+        title: "De 0 a 10, qual sua satisfação/avaliação geral?",
+        scaleMin: 0,
+        scaleMax: 10,
+        required: true
+      });
+
+      // Adicionar perguntas específicas do usuário
+      if (surveyContext.specificQuestions && surveyContext.specificQuestions.length > 0) {
+        surveyContext.specificQuestions.forEach((question, index) => {
+          generatedQuestions.push({
+            id: "q" + (generatedQuestions.length + 1),
+            type: "text",
+            title: question,
+            required: false
+          });
+        });
+      }
+
+      generatedQuestions.push({
+        id: "q" + (generatedQuestions.length + 1),
+        type: "text",
+        title: "Comentários adicionais (opcional)",
+        required: false
+      });
+
       const surveyData = {
         user_id: user.id,
         title: surveyTitle,
-        description: `Pesquisa criada pela IA sobre ${surveyContext.theme}. Tamanho da amostra: ${surveyContext.sampleSize} participantes.`,
+        description: `${surveyContext.theme}\nLocalização: ${surveyContext.location || 'Não especificada'}\nTamanho da amostra: ${surveyContext.sampleSize} participantes\n${surveyContext.candidates ? 'Candidatos: ' + surveyContext.candidates.join(', ') : ''}`,
         target_sample_size: surveyContext.sampleSize || 10,
         methodology: surveyContext.methodology || 'quota',
         mandatory_questions: {
@@ -209,33 +262,11 @@ Se ainda falta informação crítica, pergunte APENAS o que falta.`;
             enabled: true
           },
           location: {
-            title: "Qual sua cidade/estado?",
+            title: `Localização (${surveyContext.location || 'Cidade/Estado'})`,
             enabled: true
           }
         },
-        questions: [
-          {
-            id: "q1",
-            type: "single",
-            title: `Qual sua opinião sobre ${surveyContext.theme || 'o tema'}?`,
-            options: ["Muito positivo", "Positivo", "Neutro", "Negativo", "Muito negativo"],
-            required: true
-          },
-          {
-            id: "q2",
-            type: "scale",
-            title: "De 0 a 10, qual sua satisfação geral?",
-            scaleMin: 0,
-            scaleMax: 10,
-            required: true
-          },
-          {
-            id: "q3",
-            type: "text",
-            title: "Comentários adicionais (opcional)",
-            required: false
-          }
-        ],
+        questions: generatedQuestions,
         is_public: true,
         status: 'active',
         current_responses: 0
@@ -286,39 +317,63 @@ Se ainda falta informação crítica, pergunte APENAS o que falta.`;
       timestamp: new Date()
     };
 
-    // Update context based on user input - DETECÇÃO MELHORADA
+    // Update context based on user input - DETECÇÃO AVANÇADA
     const lowerInput = inputMessage.toLowerCase();
     const newContext = { ...surveyContext };
     
     // Detectar tema
     if (lowerInput.includes('político') || lowerInput.includes('voto') || lowerInput.includes('eleição') || lowerInput.includes('candidato')) {
-      newContext.theme = 'Intenção de Voto Político';
+      newContext.theme = 'Pesquisa de Intenção de Voto';
+      
+      // Detectar candidatos
+      const candidatePattern = /candidato[s]?:?\s+([^.;]+)/i;
+      const match = inputMessage.match(candidatePattern);
+      if (match) {
+        newContext.candidates = match[1].split(/[,;e]/).map(c => c.trim()).filter(c => c.length > 0);
+      }
     } else if (lowerInput.includes('satisfação') || lowerInput.includes('cliente')) {
-      newContext.theme = 'Satisfação do Cliente';
+      newContext.theme = 'Pesquisa de Satisfação do Cliente';
     } else if (lowerInput.includes('produto')) {
-      newContext.theme = 'Aceitação de Produto';
-    } else if (!newContext.theme) {
-      // Extrai o tema da primeira mensagem do usuário
-      newContext.theme = inputMessage.substring(0, 50);
+      newContext.theme = 'Pesquisa de Aceitação de Produto';
+    } else if (!newContext.theme && messages.length === 1) {
+      // Extrai o tema do primeiro prompt detalhado
+      const firstSentence = inputMessage.split(/[.!?]/)[0];
+      newContext.theme = firstSentence.substring(0, 100);
     }
     
-    // Detectar tamanho da amostra - MELHORADO
-    const numberMatch = inputMessage.match(/\d+/);
-    if (numberMatch) {
-      const number = parseInt(numberMatch[0]);
+    // Detectar localização
+    const cidadesEstados = ['são paulo', 'sp', 'rio de janeiro', 'rj', 'minas gerais', 'mg', 'brasil', 'capitais', 'interior'];
+    const locationFound = cidadesEstados.find(loc => lowerInput.includes(loc));
+    if (locationFound) {
+      newContext.location = inputMessage.match(new RegExp(`.{0,30}${locationFound}.{0,30}`, 'i'))?.[0].trim() || locationFound;
+    }
+    
+    // Detectar tamanho da amostra
+    const numberMatches = inputMessage.match(/\b(\d+)\s*(pessoas?|participantes?|entrevistados?|respondentes?)\b/i);
+    if (numberMatches) {
+      const number = parseInt(numberMatches[1]);
       if (number > 0 && number < 100000) {
         newContext.sampleSize = number;
       }
     }
     
+    // Detectar perguntas específicas
+    const questionPattern = /perguntas?:?\s+([^.;]+(?:[.;][^.;]+)*)/i;
+    const qMatch = inputMessage.match(questionPattern);
+    if (qMatch) {
+      newContext.specificQuestions = qMatch[1].split(/[.;]/).map(q => q.trim()).filter(q => q.length > 5);
+    }
+    
     // Detectar faixas etárias
-    if (lowerInput.includes('16-24') || lowerInput.includes('faixa') || lowerInput.includes('idade')) {
+    if (lowerInput.includes('16-24') || lowerInput.includes('18-25') || lowerInput.includes('faixa etária')) {
       newContext.ageRanges = ["16-24", "25-34", "35-44", "45-59", "60+"];
     }
 
     // Detectar metodologia
     if (lowerInput.includes('cota')) {
       newContext.methodology = 'quota';
+    } else if (lowerInput.includes('presencial')) {
+      newContext.methodology = 'field';
     }
 
     console.log('📝 Updated context:', newContext);

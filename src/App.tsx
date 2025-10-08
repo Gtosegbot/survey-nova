@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import Surveys from "./pages/Surveys";
+import MySurveys from "./pages/MySurveys";
 import ContactImport from "./pages/ContactImport";
 import MassDispatcher from "./pages/MassDispatcher";
 import Analytics from "./pages/Analytics";
@@ -37,8 +38,10 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/survey/:surveyId" element={<SurveyResponse />} />
+            <Route path="/research/:researcherId" element={<AIResearcher />} />
             <Route path="/dashboard" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
             <Route path="/surveys" element={<ProtectedRoute><AppLayout><Surveys /></AppLayout></ProtectedRoute>} />
+            <Route path="/my-surveys" element={<ProtectedRoute><AppLayout><MySurveys /></AppLayout></ProtectedRoute>} />
             <Route path="/contacts/import" element={<ProtectedRoute><AppLayout><div className="p-6"><ContactImport /></div></AppLayout></ProtectedRoute>} />
             <Route path="/mass-dispatcher" element={<ProtectedRoute><AppLayout><div className="p-6"><MassDispatcher /></div></AppLayout></ProtectedRoute>} />
             <Route path="/dispatchers" element={<ProtectedRoute><AppLayout><div className="p-6"><Dispatchers /></div></AppLayout></ProtectedRoute>} />

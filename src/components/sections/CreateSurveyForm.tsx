@@ -54,43 +54,72 @@ interface SurveyConfig {
   margin: number;
 }
 
-export const CreateSurveyForm = () => {
+interface CreateSurveyFormProps {
+  initialData?: any;
+  isEditing?: boolean;
+}
+
+export const CreateSurveyForm = ({ initialData, isEditing }: CreateSurveyFormProps) => {
   const { toast } = useToast();
-  const [surveyTitle, setSurveyTitle] = useState("");
-  const [surveyDescription, setSurveyDescription] = useState("");
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [surveyTitle, setSurveyTitle] = useState(initialData?.title || "");
+  const [surveyDescription, setSurveyDescription] = useState(initialData?.description || "");
+  const [questions, setQuestions] = useState<Question[]>(initialData?.questions || []);
   const [credits, setCredits] = useState(100.00);
   const [surveyConfig, setSurveyConfig] = useState<SurveyConfig>({
-    totalParticipants: 100,
+    totalParticipants: initialData?.target_sample_size || 100,
     quotas: [],
-    methodology: 'quota',
+    methodology: initialData?.methodology || 'quota',
     confidence: 95,
     margin: 5
   });
   const [showQuotaCalculator, setShowQuotaCalculator] = useState(false);
-  const [mandatoryQuestions, setMandatoryQuestions] = useState<MandatoryQuestion[]>([
-    {
-      id: "location",
-      category: "location",
-      title: "Qual sua localização?",
-      options: ["São Paulo Capital", "Interior SP", "Rio de Janeiro", "Belo Horizonte", "Outros"],
-      enabled: true
-    },
-    {
-      id: "gender", 
-      category: "gender",
-      title: "Qual seu sexo?",
-      options: ["Masculino", "Feminino", "Outro", "Prefiro não responder"],
-      enabled: true
-    },
-    {
-      id: "age",
-      category: "age", 
-      title: "Qual sua faixa etária?",
-      options: ["16-24", "25-34", "35-44", "45-59", "60+"],
-      enabled: true
-    }
-  ]);
+  const [mandatoryQuestions, setMandatoryQuestions] = useState<MandatoryQuestion[]>(
+    initialData?.mandatory_questions ? [
+      {
+        id: "location",
+        category: "location",
+        title: initialData.mandatory_questions.location?.title || "Qual sua localização?",
+        options: initialData.mandatory_questions.location?.options || ["São Paulo Capital", "Interior SP", "Rio de Janeiro", "Belo Horizonte", "Outros"],
+        enabled: initialData.mandatory_questions.location?.enabled !== false
+      },
+      {
+        id: "gender", 
+        category: "gender",
+        title: initialData.mandatory_questions.gender?.title || "Qual seu sexo?",
+        options: initialData.mandatory_questions.gender?.options || ["Masculino", "Feminino", "Outro", "Prefiro não responder"],
+        enabled: initialData.mandatory_questions.gender?.enabled !== false
+      },
+      {
+        id: "age",
+        category: "age", 
+        title: initialData.mandatory_questions.age?.title || "Qual sua faixa etária?",
+        options: initialData.mandatory_questions.age?.options || ["16-24", "25-34", "35-44", "45-59", "60+"],
+        enabled: initialData.mandatory_questions.age?.enabled !== false
+      }
+    ] : [
+      {
+        id: "location",
+        category: "location",
+        title: "Qual sua localização?",
+        options: ["São Paulo Capital", "Interior SP", "Rio de Janeiro", "Belo Horizonte", "Outros"],
+        enabled: true
+      },
+      {
+        id: "gender", 
+        category: "gender",
+        title: "Qual seu sexo?",
+        options: ["Masculino", "Feminino", "Outro", "Prefiro não responder"],
+        enabled: true
+      },
+      {
+        id: "age",
+        category: "age", 
+        title: "Qual sua faixa etária?",
+        options: ["16-24", "25-34", "35-44", "45-59", "60+"],
+        enabled: true
+      }
+    ]
+  );
 
   const addQuestion = (type: Question['type']) => {
     const newQuestion: Question = {
