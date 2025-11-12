@@ -154,12 +154,17 @@ export type Database = {
           ai_generated: boolean | null
           content: Json | null
           created_at: string
+          delivered_count: number | null
           id: string
+          message: string | null
           name: string
+          response_count: number | null
           schedule_date: string | null
+          scheduled_for: string | null
           sent_count: number | null
           status: string | null
           success_count: number | null
+          survey_id: string | null
           target_audience: Json | null
           type: string
           updated_at: string
@@ -169,12 +174,17 @@ export type Database = {
           ai_generated?: boolean | null
           content?: Json | null
           created_at?: string
+          delivered_count?: number | null
           id?: string
+          message?: string | null
           name: string
+          response_count?: number | null
           schedule_date?: string | null
+          scheduled_for?: string | null
           sent_count?: number | null
           status?: string | null
           success_count?: number | null
+          survey_id?: string | null
           target_audience?: Json | null
           type: string
           updated_at?: string
@@ -184,16 +194,59 @@ export type Database = {
           ai_generated?: boolean | null
           content?: Json | null
           created_at?: string
+          delivered_count?: number | null
           id?: string
+          message?: string | null
           name?: string
+          response_count?: number | null
           schedule_date?: string | null
+          scheduled_for?: string | null
           sent_count?: number | null
           status?: string | null
           success_count?: number | null
+          survey_id?: string | null
           target_audience?: Json | null
           type?: string
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_groups: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          tags: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -201,6 +254,7 @@ export type Database = {
         Row: {
           created_at: string
           email: string | null
+          group_id: string | null
           id: string
           kanban_stage: string | null
           metadata: Json | null
@@ -215,6 +269,7 @@ export type Database = {
         Insert: {
           created_at?: string
           email?: string | null
+          group_id?: string | null
           id?: string
           kanban_stage?: string | null
           metadata?: Json | null
@@ -229,6 +284,7 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string | null
+          group_id?: string | null
           id?: string
           kanban_stage?: string | null
           metadata?: Json | null
@@ -240,7 +296,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contacts_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "contact_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       credit_transactions: {
         Row: {
@@ -394,12 +458,12 @@ export type Database = {
       }
       response_validation: {
         Row: {
-          coordinates: unknown | null
+          coordinates: unknown
           created_at: string
           device_fingerprint: string | null
           duplicate_score: number | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           is_duplicate: boolean | null
           response_id: string
           user_agent: string | null
@@ -407,12 +471,12 @@ export type Database = {
           voice_signature: string | null
         }
         Insert: {
-          coordinates?: unknown | null
+          coordinates?: unknown
           created_at?: string
           device_fingerprint?: string | null
           duplicate_score?: number | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           is_duplicate?: boolean | null
           response_id: string
           user_agent?: string | null
@@ -420,12 +484,12 @@ export type Database = {
           voice_signature?: string | null
         }
         Update: {
-          coordinates?: unknown | null
+          coordinates?: unknown
           created_at?: string
           device_fingerprint?: string | null
           duplicate_score?: number | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           is_duplicate?: boolean | null
           response_id?: string
           user_agent?: string | null
@@ -581,10 +645,10 @@ export type Database = {
           answers: Json
           completed_at: string | null
           confidence_score: number | null
-          coordinates: unknown | null
+          coordinates: unknown
           demographics: Json
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           is_valid: boolean | null
           respondent_data: Json
           survey_id: string
@@ -595,10 +659,10 @@ export type Database = {
           answers?: Json
           completed_at?: string | null
           confidence_score?: number | null
-          coordinates?: unknown | null
+          coordinates?: unknown
           demographics?: Json
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           is_valid?: boolean | null
           respondent_data: Json
           survey_id: string
@@ -609,10 +673,10 @@ export type Database = {
           answers?: Json
           completed_at?: string | null
           confidence_score?: number | null
-          coordinates?: unknown | null
+          coordinates?: unknown
           demographics?: Json
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           is_valid?: boolean | null
           respondent_data?: Json
           survey_id?: string
@@ -757,10 +821,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      check_survey_quotas: {
-        Args: { survey_uuid: string }
-        Returns: boolean
-      }
+      check_survey_quotas: { Args: { survey_uuid: string }; Returns: boolean }
       get_user_roles: {
         Args: { _user_id: string }
         Returns: {
@@ -778,10 +839,7 @@ export type Database = {
         Args: { survey_uuid: string }
         Returns: undefined
       }
-      is_user_admin: {
-        Args: { user_email: string }
-        Returns: boolean
-      }
+      is_user_admin: { Args: { user_email: string }; Returns: boolean }
       update_user_credits: {
         Args: {
           p_amount: number

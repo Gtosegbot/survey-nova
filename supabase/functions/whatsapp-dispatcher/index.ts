@@ -6,6 +6,32 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// N8N Webhook - PRIORITY 1
+async function sendWhatsAppN8N(to: string, message: string): Promise<any> {
+  console.log('💬 Sending WhatsApp via N8N webhook...');
+  
+  const N8N_WEBHOOK = Deno.env.get('N8N_WEBHOOK') || 'https://disparoseguro.app.n8n.cloud/webhook/send-whatsapp';
+  
+  const response = await fetch(N8N_WEBHOOK, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      to: to,
+      message: message,
+      timestamp: new Date().toISOString(),
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`N8N webhook failed: ${response.status} - ${error}`);
+  }
+
+  return await response.json();
+}
+
 interface WhatsAppProvider {
   id: string;
   type: 'official' | 'evolution' | 'baileys';
@@ -158,39 +184,58 @@ serve(async (req) => {
         throw new Error('Phone number and message are required');
       }
 
-      const provider = getNextProvider();
-      if (!provider) {
-        throw new Error('All WhatsApp providers are rate limited or unavailable');
-      }
-
-      console.log(`Using WhatsApp provider: ${provider.id} (${provider.type})`);
-      
-      addRequest(provider.id);
-
       const formattedPhone = formatPhoneNumber(to);
-      let result;
+      
+      // Try N8N webhook first
+      try {
+        const result = await sendWhatsAppN8N(formattedPhone, message);
+        console.log('✅ WhatsApp sent via N8N webhook');
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            provider: 'n8n-webhook',
+            result 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (n8nError) {
+        console.error('❌ N8N webhook failed, trying fallback providers:', n8nError);
+        
+        // Fallback to existing providers
+        const provider = getNextProvider();
+        if (!provider) {
+          throw new Error('All WhatsApp providers are rate limited or unavailable');
+        }
 
-      switch (provider.type) {
-        case 'official':
-          result = await sendWhatsAppOfficial(provider, formattedPhone, message);
-          break;
-        case 'evolution':
-          result = await sendWhatsAppEvolution(provider, formattedPhone, message);
-          break;
-        default:
-          throw new Error(`Unsupported provider type: ${provider.type}`);
+        console.log(`Using WhatsApp provider: ${provider.id} (${provider.type})`);
+        
+        addRequest(provider.id);
+
+        let result;
+
+        switch (provider.type) {
+          case 'official':
+            result = await sendWhatsAppOfficial(provider, formattedPhone, message);
+            break;
+          case 'evolution':
+            result = await sendWhatsAppEvolution(provider, formattedPhone, message);
+            break;
+          default:
+            throw new Error(`Unsupported provider type: ${provider.type}`);
+        }
+
+        console.log(`WhatsApp message sent successfully via ${provider.id}`);
+
+        return new Response(JSON.stringify({
+          success: true,
+          provider_used: provider.id,
+          message_id: result.messages?.[0]?.id || result.key?.id || 'unknown',
+          result
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
-
-      console.log(`WhatsApp message sent successfully via ${provider.id}`);
-
-      return new Response(JSON.stringify({
-        success: true,
-        provider_used: provider.id,
-        message_id: result.messages?.[0]?.id || result.key?.id || 'unknown',
-        result
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
 
     } else if (action === 'send_bulk') {
       if (!bulk_messages || !Array.isArray(bulk_messages)) {

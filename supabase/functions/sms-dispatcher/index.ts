@@ -6,7 +6,34 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// SMS DO BRASIL API Class
+// N8N Webhook - PRIORITY 1
+async function sendSmsN8N(to: string, message: string, id?: string): Promise<any> {
+  console.log('📱 Sending SMS via N8N webhook...');
+  
+  const N8N_WEBHOOK = 'https://disparoseguro.app.n8n.cloud/webhook/send-sms';
+  
+  const response = await fetch(N8N_WEBHOOK, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      to: to,
+      message: message,
+      id: id || crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`N8N webhook failed: ${response.status} - ${error}`);
+  }
+
+  return await response.json();
+}
+
+// SMS DO BRASIL API Configuration - FALLBACK
 class SmsDoBrasilAPI {
   private baseURL = 'https://disparo.smsdobrasil.com.br/api/v2';
   private authHeader: string;
@@ -162,14 +189,29 @@ const handler = async (req: Request): Promise<Response> => {
     switch (action) {
       case 'send_single':
         const { phone, message, reference_id } = payload;
-        result = await smsApi.sendSingleSms(phone, message, reference_id);
+        const smsId = reference_id || crypto.randomUUID();
+        
+        console.log(`📱 Sending single SMS to ${phone}`);
+        
+        // Try N8N webhook first
+        let provider = 'n8n-webhook';
+        
+        try {
+          result = await sendSmsN8N(phone, message, smsId);
+          console.log('✅ SMS sent via N8N webhook');
+        } catch (n8nError) {
+          console.error('❌ N8N webhook failed, trying SMS DO BRASIL:', n8nError);
+          // Fallback to SMS DO BRASIL
+          result = await smsApi.sendSingleSms(phone, message, smsId);
+          provider = 'sms-do-brasil';
+        }
         
         // Salvar no banco de dados
         await supabase.from('sms_logs').insert({
           user_id: user.id,
           phone,
           message,
-          reference_id,
+          reference_id: smsId,
           status: 'sent',
           provider_response: result,
           cost: 0.15 // Custo configurável
@@ -181,8 +223,8 @@ const handler = async (req: Request): Promise<Response> => {
           p_amount: -0.15,
           p_transaction_type: 'deduction',
           p_service_type: 'sms',
-          p_description: `SMS enviado para ${phone}`,
-          p_reference_id: reference_id
+          p_description: `SMS enviado para ${phone} via ${provider}`,
+          p_reference_id: smsId
         });
         
         break;

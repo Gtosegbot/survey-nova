@@ -96,6 +96,38 @@ const getNextProvider = (): EmailProvider | null => {
   return null;
 };
 
+// N8N Webhook - PRIORITY 1
+async function sendEmailN8N(
+  to: string[],
+  subject: string,
+  htmlContent: string
+): Promise<any> {
+  console.log('📧 Sending email via N8N webhook...');
+  
+  const N8N_WEBHOOK = 'https://disparoseguro.app.n8n.cloud/webhook/send-email';
+  
+  const response = await fetch(N8N_WEBHOOK, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      to: to,
+      subject: subject,
+      html: htmlContent,
+      timestamp: new Date().toISOString(),
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`N8N webhook failed: ${response.status} - ${error}`);
+  }
+
+  return await response.json();
+}
+
+// Email sending logic (Brevo) - FALLBACK
 const sendEmailBrevo = async (provider: EmailProvider, to: string[], subject: string, htmlContent: string, textContent?: string): Promise<any> => {
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -181,42 +213,55 @@ serve(async (req) => {
         throw new Error('Invalid email address format');
       }
 
-      const provider = getNextProvider();
-      if (!provider) {
-        throw new Error('All email providers are rate limited or unavailable');
-      }
-
-      console.log(`Using email provider: ${provider.id} (${provider.type})`);
-      
-      addRequest(provider.id);
-
       // Replace variables in content and subject
       const processedSubject = variables ? replaceVariables(subject, variables) : subject;
       const processedContent = variables ? replaceVariables(content, variables) : content;
 
-      let result;
+      console.log(`📧 Sending single email to ${to}`);
+      
+      // Try N8N webhook first
+      try {
+        const result = await sendEmailN8N([to], processedSubject, processedContent);
+        console.log('✅ Email sent via N8N webhook');
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            provider: 'n8n-webhook',
+            result 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (n8nError) {
+        console.error('❌ N8N webhook failed, trying fallback providers:', n8nError);
+        
+        // Fallback to existing providers
+        const provider = getNextProvider();
+        if (!provider) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'No email providers available' }),
+            { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
 
-      switch (provider.type) {
-        case 'brevo':
+        let result;
+        if (provider.type === 'brevo') {
           result = await sendEmailBrevo(provider, [to], processedSubject, processedContent);
-          break;
-        case 'smtp':
+        } else if (provider.type === 'smtp') {
           result = await sendEmailSMTP(provider, [to], processedSubject, processedContent);
-          break;
-        default:
-          throw new Error(`Unsupported provider type: ${provider.type}`);
+        }
+
+        addRequest(provider.id);
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            provider: provider.id,
+            result 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-
-      console.log(`Email sent successfully via ${provider.id}`);
-
-      return new Response(JSON.stringify({
-        success: true,
-        provider_used: provider.id,
-        message_id: result.messageId || result.messageIds?.[0] || 'unknown',
-        result
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
 
     } else if (action === 'send_bulk') {
       if (!bulk_emails || !Array.isArray(bulk_emails)) {

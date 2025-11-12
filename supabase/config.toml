@@ -1,1 +1,16 @@
 project_id = "cbvipnqtfigvfmqotsaf"
+
+[functions.ai-multi-rotation]
+verify_jwt = false
+
+[functions.ai-rotation]
+verify_jwt = false
+
+[functions.email-dispatcher]
+verify_jwt = true
+
+[functions.sms-dispatcher]
+verify_jwt = true
+
+[functions.whatsapp-dispatcher]
+verify_jwt = true

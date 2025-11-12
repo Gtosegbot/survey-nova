@@ -146,7 +146,7 @@ REGRAS DE ANÁLISE:
 
 Seja direto e objetivo.`;
 
-      const { data, error } = await supabase.functions.invoke('ai-rotation', {
+      const { data, error } = await supabase.functions.invoke('ai-multi-rotation', {
         body: { 
           messages: [
             { role: 'system', content: systemPrompt },
