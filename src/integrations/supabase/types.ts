@@ -342,6 +342,53 @@ export type Database = {
         }
         Relationships: []
       }
+      field_sessions: {
+        Row: {
+          agent_id: string
+          created_at: string | null
+          device_id: string
+          ended_at: string | null
+          id: string
+          location: unknown
+          responses_collected: number | null
+          started_at: string | null
+          status: string | null
+          survey_id: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string | null
+          device_id: string
+          ended_at?: string | null
+          id?: string
+          location?: unknown
+          responses_collected?: number | null
+          started_at?: string | null
+          status?: string | null
+          survey_id: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string | null
+          device_id?: string
+          ended_at?: string | null
+          id?: string
+          location?: unknown
+          responses_collected?: number | null
+          started_at?: string | null
+          status?: string | null
+          survey_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "field_sessions_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integrations: {
         Row: {
           api_key: string | null
@@ -596,6 +643,50 @@ export type Database = {
         }
         Relationships: []
       }
+      survey_assignments: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string
+          collected_responses: number | null
+          created_at: string | null
+          id: string
+          researcher_id: string
+          status: string | null
+          survey_id: string
+          target_responses: number | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by: string
+          collected_responses?: number | null
+          created_at?: string | null
+          id?: string
+          researcher_id: string
+          status?: string | null
+          survey_id: string
+          target_responses?: number | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string
+          collected_responses?: number | null
+          created_at?: string | null
+          id?: string
+          researcher_id?: string
+          status?: string | null
+          survey_id?: string
+          target_responses?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_assignments_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       survey_links: {
         Row: {
           channel_type: string
@@ -643,47 +734,72 @@ export type Database = {
       survey_responses: {
         Row: {
           answers: Json
+          audio_url: string | null
           completed_at: string | null
           confidence_score: number | null
           coordinates: unknown
           demographics: Json
+          device_info: Json | null
+          field_agent_id: string | null
           id: string
           ip_address: unknown
           is_valid: boolean | null
+          location: unknown
           respondent_data: Json
+          response_id: string | null
           survey_id: string
+          survey_link_id: string | null
           user_agent: string | null
           validation_data: Json | null
         }
         Insert: {
           answers?: Json
+          audio_url?: string | null
           completed_at?: string | null
           confidence_score?: number | null
           coordinates?: unknown
           demographics?: Json
+          device_info?: Json | null
+          field_agent_id?: string | null
           id?: string
           ip_address?: unknown
           is_valid?: boolean | null
+          location?: unknown
           respondent_data: Json
+          response_id?: string | null
           survey_id: string
+          survey_link_id?: string | null
           user_agent?: string | null
           validation_data?: Json | null
         }
         Update: {
           answers?: Json
+          audio_url?: string | null
           completed_at?: string | null
           confidence_score?: number | null
           coordinates?: unknown
           demographics?: Json
+          device_info?: Json | null
+          field_agent_id?: string | null
           id?: string
           ip_address?: unknown
           is_valid?: boolean | null
+          location?: unknown
           respondent_data?: Json
+          response_id?: string | null
           survey_id?: string
+          survey_link_id?: string | null
           user_agent?: string | null
           validation_data?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_survey_link"
+            columns: ["survey_link_id"]
+            isOneToOne: false
+            referencedRelation: "survey_links"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "survey_responses_survey_id_fkey"
             columns: ["survey_id"]

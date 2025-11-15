@@ -14,3 +14,9 @@ verify_jwt = true
 
 [functions.whatsapp-dispatcher]
 verify_jwt = true
+
+[functions.create-campaign]
+verify_jwt = true
+
+[functions.dispatch-campaign]
+verify_jwt = true
