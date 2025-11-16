@@ -1,64 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  Search, 
-  Share2, 
-  Settings,
-  Brain,
-  Target,
-  Users,
-  MapPin,
-  Calendar,
-  Play,
-  Pause,
-  RotateCcw,
-  Download,
-  TrendingUp
-} from "lucide-react";
+import { Loader2, Send, Brain, Sparkles, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-interface ResearchConfig {
-  title: string;
-  description: string;
-  targetAudience: string;
-  location: string;
-  ageRange: string;
-  gender: string;
-  sampleSize: number;
-  researchTerms: string[];
-  activeChannels: {
-    whatsapp: boolean;
-    sms: boolean;
-    email: boolean;
-    voip: boolean;
-  };
-  schedule: {
-    startDate: string;
-    endDate: string;
-    frequency: string;
-  };
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
 }
 
-interface ResearchResult {
-  id: string;
-  participant: {
-    demographics: Record<string, string>;
-    location: { lat: number; lng: number };
-    voicePattern?: string;
-  };
-  responses: Record<string, any>;
-  sentiment: {
-    score: number;
-    classification: 'positive' | 'neutral' | 'negative';
-  };
-  timestamp: string;
-  source: 'whatsapp' | 'sms' | 'email' | 'voip';
+interface CollectedInfo {
+  topic?: string;
+  entities?: string[];
+  targetAudience?: string;
+  location?: string;
+  sampleSize?: number;
+  questionCount?: number;
+  context?: string;
+  researchType?: string;
 }
 
 export default function AIResearcher() {
