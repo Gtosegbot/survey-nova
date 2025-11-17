@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, MessageCircle, Lock, CheckCircle2, LogIn } from "lucide-react";
+import { Loader2, Send, MessageCircle, Lock, CheckCircle2, LogIn, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from '@supabase/supabase-js';
@@ -35,6 +35,8 @@ export default function AIResearcher() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [collectedResponses, setCollectedResponses] = useState<Record<string, any>>({});
+  const [protocolId, setProtocolId] = useState<string>('');
+  const [permissionsGranted, setPermissionsGranted] = useState({ location: false, audio: false });
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,6 +44,61 @@ export default function AIResearcher() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Request permissions
+  const requestPermissions = async () => {
+    try {
+      // Request geolocation
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          () => {
+            setPermissionsGranted(prev => ({ ...prev, location: true }));
+            toast({
+              title: "Localização autorizada ✓",
+              description: "Isso ajuda a validar a autenticidade das respostas.",
+            });
+          },
+          () => {
+            toast({
+              title: "Localização não autorizada",
+              description: "Você pode continuar, mas isso pode afetar a validação.",
+              variant: "destructive"
+            });
+          }
+        );
+      }
+
+      // Request microphone (audio)
+      if ('mediaDevices' in navigator) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach(track => track.stop()); // Stop immediately
+          setPermissionsGranted(prev => ({ ...prev, audio: true }));
+          toast({
+            title: "Áudio autorizado ✓",
+            description: "Isso permite futuras respostas em áudio para maior precisão.",
+          });
+        } catch {
+          toast({
+            title: "Áudio não autorizado",
+            description: "Você pode continuar respondendo por texto.",
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error requesting permissions:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (survey && !permissionsGranted.location && !permissionsGranted.audio) {
+      // Request permissions after survey loads
+      const timer = setTimeout(() => {
+        requestPermissions();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [survey]);
 
   // Check authentication
   useEffect(() => {
@@ -185,9 +242,23 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
     try {
       // Generate protocol ID
       const protocolId = `PROTO-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      setProtocolId(protocolId);
       
       // Get device fingerprint
       const deviceFingerprint = `${navigator.userAgent}-${screen.width}x${screen.height}`;
+      
+      // Get geolocation if available
+      let coordinates = null;
+      if (permissionsGranted.location && 'geolocation' in navigator) {
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+          });
+          coordinates = `POINT(${position.coords.longitude} ${position.coords.latitude})`;
+        } catch (error) {
+          console.log('Could not get geolocation:', error);
+        }
+      }
       
       // Check for duplicates
       const { data: existingResponses } = await supabase
@@ -222,10 +293,17 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
             fingerprint: deviceFingerprint,
             user_agent: navigator.userAgent
           },
+          location: coordinates,
+          ip_address: null,
           completed_at: new Date().toISOString()
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error saving to database:', error);
+        throw error;
+      }
+
+      console.log('✅ Response saved successfully with protocol:', protocolId);
 
       toast({
         title: "Pesquisa concluída! ✅",
@@ -236,7 +314,7 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
       console.error('Error saving response:', error);
       toast({
         title: "Erro ao salvar respostas",
-        description: "Houve um problema ao salvar suas respostas.",
+        description: "Houve um problema ao salvar suas respostas. Tente novamente.",
         variant: "destructive"
       });
     }
@@ -393,9 +471,9 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
         </CardContent>
       </Card>
 
-      {isCompleted && (
+      {isCompleted && protocolId && (
         <Card className="bg-green-50 border-green-200">
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 space-y-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-6 w-6 text-green-600" />
               <div>
@@ -403,7 +481,36 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
                 <p className="text-sm text-green-700">
                   Obrigado por participar. Suas respostas foram salvas com sucesso.
                 </p>
+                <p className="text-sm text-green-800 font-mono mt-2">
+                  Protocolo: <strong>{protocolId}</strong>
+                </p>
               </div>
+            </div>
+            
+            <div className="flex gap-2 pt-4 border-t border-green-200">
+              <Button
+                onClick={() => {
+                  const shareUrl = `${window.location.origin}/research/${survey.id}?ref=${user?.id || 'anonymous'}`;
+                  navigator.clipboard.writeText(shareUrl);
+                  toast({
+                    title: "Link copiado!",
+                    description: "Compartilhe esta pesquisa com amigos e familiares.",
+                  });
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Compartilhar com Amigos
+              </Button>
+              <Button
+                onClick={() => navigate('/trending')}
+                variant="default"
+                className="flex-1"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Ver Mais Pesquisas
+              </Button>
             </div>
           </CardContent>
         </Card>

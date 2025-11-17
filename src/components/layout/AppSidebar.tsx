@@ -32,8 +32,8 @@ const navigationItems = [
     group: "Principal",
     items: [
       { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
-      { title: "Minhas Pesquisas", url: "/surveys", icon: FileText },
-      { title: "Criar Pesquisa", url: "/surveys", icon: Search },
+      { title: "Minhas Pesquisas", url: "/my-surveys", icon: FileText },
+      { title: "Criar Pesquisa", url: "/create-survey", icon: Search },
       { title: "Analytics", url: "/analytics", icon: TrendingUp },
     ]
   },
