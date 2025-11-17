@@ -16,6 +16,7 @@ import Analytics from "./pages/Analytics";
 import Credits from "./pages/Credits";
 import AICreator from "./pages/AICreator";
 import AIResearcher from "./pages/AIResearcher";
+import TrendingSurveys from "./pages/TrendingSurveys";
 import Validation from "./pages/Validation";
 import Team from "./pages/Team";
 import Dispatchers from "./pages/Dispatchers";
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/survey/:surveyId" element={<SurveyResponse />} />
             <Route path="/research/:researcherId" element={<AIResearcher />} />
+            <Route path="/trending" element={<TrendingSurveys />} />
             <Route path="/dashboard" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
             <Route path="/surveys" element={<ProtectedRoute><AppLayout><Surveys /></AppLayout></ProtectedRoute>} />
             <Route path="/my-surveys" element={<ProtectedRoute><AppLayout><MySurveys /></AppLayout></ProtectedRoute>} />

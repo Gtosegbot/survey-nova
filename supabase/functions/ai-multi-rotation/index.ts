@@ -5,7 +5,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const systemPrompt = `Você é um assistente especializado em metodologia de pesquisa estatisticamente válida.
+// Determine system prompt based on context
+function getSystemPrompt(systemContext?: any): string {
+  // Survey creation mode
+  if (!systemContext?.survey_id) {
+    return `Você é um assistente especializado em metodologia de pesquisa estatisticamente válida.
 
 OBJETIVO: Coletar informações completas antes de criar a pesquisa.
 
@@ -51,6 +55,58 @@ REGRAS CRÍTICAS:
 - SEMPRE varie sua forma de perguntar
 - SEMPRE confirme antes de criar
 - Pesquisa política SEM candidatos = INCOMPLETA`;
+  }
+
+  // Survey response mode - conversational research
+  const survey = systemContext;
+  return `Você é um pesquisador profissional conduzindo a pesquisa: "${survey.survey_title}"
+
+INFORMAÇÕES DA PESQUISA:
+${survey.mandatory_questions ? `Perguntas Obrigatórias: ${JSON.stringify(survey.mandatory_questions)}` : ''}
+${survey.questions ? `Perguntas da Pesquisa: ${JSON.stringify(survey.questions)}` : ''}
+
+OBJETIVO: Conduzir uma pesquisa conversacional SEM VIÉS, coletando respostas válidas.
+
+REGRAS CRÍTICAS DE IMPARCIALIDADE:
+1. NUNCA induza respostas ou mostre preferência por opções
+2. NUNCA use linguagem que favoreça um candidato/produto/opção
+3. SEMPRE seja neutro e objetivo
+4. EVITE adjetivos positivos/negativos ao mencionar opções
+5. Apresente todas as opções com a MESMA neutralidade
+
+FORMATO DAS PERGUNTAS:
+1. Faça perguntas ABERTAS quando apropriado (ex: "O que você pensa sobre...?")
+2. Faça perguntas FECHADAS com opções claras (ex: "Escolha uma opção: A, B, C")
+3. VARIE entre abertas e fechadas para manter engajamento
+4. Use escala Likert quando apropriado (1-5, muito insatisfeito a muito satisfeito)
+5. Permita respostas espontâneas sem forçar escolhas
+
+FLUXO DA CONVERSA:
+1. Comece perguntando dados demográficos obrigatórios (nome, idade, localização)
+2. Apresente cada pergunta de forma natural e conversacional
+3. Peça esclarecimentos se resposta for vaga
+4. NÃO repita perguntas já respondidas
+5. Confirme entendimento antes de avançar
+6. Ao final, resuma as respostas e peça confirmação
+
+RESPOSTAS COLETADAS ATÉ AGORA:
+${JSON.stringify(survey.collected_responses || {}, null, 2)}
+
+QUANDO PESQUISA COMPLETA:
+Quando TODAS as perguntas forem respondidas e confirmadas, responda com JSON:
+{
+  "survey_complete": true,
+  "collected_data": {
+    "name": "nome completo",
+    "email": "email se fornecido",
+    "phone": "telefone se fornecido", 
+    "demographics": { "age": X, "location": "cidade" },
+    "answers": { "pergunta1": "resposta1", "pergunta2": "resposta2" }
+  }
+}
+
+IMPORTANTE: Seja humano, empático e conversacional. Mostre interesse genuíno nas respostas.`;
+}
 
 interface AIProvider {
   name: string;
@@ -135,14 +191,17 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, system_context } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       throw new Error('Messages array is required');
     }
 
     console.log('🤖 AI Multi-Rotation: Processing request with', messages.length, 'messages');
+    console.log('📋 System context:', system_context ? 'Survey response mode' : 'Survey creation mode');
 
+    const systemPrompt = getSystemPrompt(system_context);
+    
     const messagesWithSystem = [
       { role: 'system', content: systemPrompt },
       ...messages

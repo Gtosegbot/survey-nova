@@ -171,7 +171,7 @@ Seja direto e objetivo.`;
     }
   };
 
-  const createSurveyAutomatically = async () => {
+  const createSurveyAutomatically = async (): Promise<string | null> => {
     try {
       setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -182,7 +182,7 @@ Seja direto e objetivo.`;
           variant: "destructive"
         });
         setIsLoading(false);
-        return;
+        return null;
       }
 
       const surveyTitle = `Pesquisa: ${surveyContext.theme || 'Sem Tema'}`;
@@ -252,23 +252,25 @@ Seja direto e objetivo.`;
         methodology: surveyContext.methodology || 'quota',
         mandatory_questions: {
           age: {
-            title: "Qual sua faixa etária?",
-            options: surveyContext.ageRanges || ["16-24", "25-34", "35-44", "45-59", "60+"],
-            enabled: true
-          },
-          gender: {
-            title: "Qual seu gênero?",
-            options: ["Masculino", "Feminino", "Outro"],
-            enabled: true
+            label: "Idade",
+            type: "number",
+            required: true
           },
           location: {
-            title: `Localização (${surveyContext.location || 'Cidade/Estado'})`,
-            enabled: true
+            label: "Localização (Cidade/Estado)",
+            type: "text",
+            required: true
+          },
+          gender: {
+            label: "Gênero",
+            type: "single",
+            options: ["Masculino", "Feminino", "Outro", "Prefiro não informar"],
+            required: false
           }
         },
         questions: generatedQuestions,
         is_public: true,
-        status: 'active',
+        status: 'published',
         current_responses: 0
       };
 
@@ -292,9 +294,8 @@ Seja direto e objetivo.`;
         description: `"${survey.title}" está ativa e pronta para receber respostas.`,
       });
 
-      setTimeout(() => {
-        navigate('/surveys');
-      }, 2000);
+      setIsLoading(false);
+      return survey.id;
 
     } catch (error: any) {
       console.error('❌ Erro ao criar pesquisa:', error);
@@ -304,6 +305,7 @@ Seja direto e objetivo.`;
         variant: "destructive"
       });
       setIsLoading(false);
+      return null;
     }
   };
 
@@ -399,7 +401,18 @@ Seja direto e objetivo.`;
         };
         
         setMessages(prev => [...prev, readyMessage]);
-        await createSurveyAutomatically();
+        
+        const surveyId = await createSurveyAutomatically();
+        if (surveyId) {
+          const shareableLink = `${window.location.origin}/research/${surveyId}`;
+          const linkMessage: Message = {
+            id: (Date.now() + 2).toString(),
+            type: 'assistant',
+            content: `🎉 **Pesquisa criada com sucesso!**\n\n📋 **ID da Pesquisa**: ${surveyId}\n\n🔗 **Link Compartilhável**:\n${shareableLink}\n\n✅ Copie e compartilhe este link para coletar respostas!\n\n📊 A pesquisa está pronta para receber respostas com validação anti-fraude através de login social.`,
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, linkMessage]);
+        }
         return;
       }
 

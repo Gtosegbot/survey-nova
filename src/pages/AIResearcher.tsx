@@ -183,25 +183,53 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
 
   const saveSurveyResponse = async (responseData: any) => {
     try {
+      // Generate protocol ID
+      const protocolId = `PROTO-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      
+      // Get device fingerprint
+      const deviceFingerprint = `${navigator.userAgent}-${screen.width}x${screen.height}`;
+      
+      // Check for duplicates
+      const { data: existingResponses } = await supabase
+        .from('survey_responses')
+        .select('id')
+        .eq('survey_id', survey!.id)
+        .or(`respondent_data->>user_id.eq.${user?.id},respondent_data->>email.eq.${responseData.email}`);
+
+      if (existingResponses && existingResponses.length > 0) {
+        toast({
+          title: "Resposta já registrada",
+          description: "Você já respondeu esta pesquisa anteriormente.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('survey_responses')
         .insert({
           survey_id: survey!.id,
+          response_id: protocolId,
           respondent_data: {
             user_id: user?.id,
             email: user?.email || responseData.email,
-            name: responseData.name
+            name: responseData.name,
+            authenticated: !!user
           },
           answers: responseData.answers,
           demographics: responseData.demographics || {},
+          device_info: {
+            fingerprint: deviceFingerprint,
+            user_agent: navigator.userAgent
+          },
           completed_at: new Date().toISOString()
         });
 
       if (error) throw error;
 
       toast({
-        title: "Pesquisa concluída!",
-        description: "Obrigado por participar da nossa pesquisa.",
+        title: "Pesquisa concluída! ✅",
+        description: `Protocolo: ${protocolId}. Obrigado por participar!`,
       });
 
     } catch (error) {
