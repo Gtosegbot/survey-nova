@@ -202,6 +202,8 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
         collected_responses: collectedResponses
       };
 
+      console.log('📤 Sending to ai-multi-rotation:', { conversationHistory, systemContext });
+
       const { data, error } = await supabase.functions.invoke('ai-multi-rotation', {
         body: {
           messages: conversationHistory,
@@ -209,7 +211,16 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
         }
       });
 
-      if (error) throw error;
+      console.log('📥 Response from ai-multi-rotation:', { data, error });
+
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        throw error;
+      }
+
+      if (!data || !data.response) {
+        throw new Error('Resposta inválida da IA');
+      }
 
       const assistantMessage: Message = {
         role: 'assistant',
@@ -227,7 +238,15 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
       }
 
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ Error sending message:', error);
+      
+      const errorMessage: Message = {
+        role: 'assistant',
+        content: 'Desculpe, houve um erro ao processar sua resposta. Por favor, tente novamente.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      
       toast({
         title: "Erro ao enviar mensagem",
         description: error instanceof Error ? error.message : "Erro desconhecido",
