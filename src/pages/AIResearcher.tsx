@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, MessageCircle, Lock, CheckCircle2, LogIn, Share2 } from "lucide-react";
+import { Loader2, Send, MessageCircle, Lock, CheckCircle2, LogIn, Share2, Mic, MicOff, Play, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import type { User } from '@supabase/supabase-js';
 
 interface Message {
@@ -38,6 +39,15 @@ export default function AIResearcher() {
   const [protocolId, setProtocolId] = useState<string>('');
   const [permissionsGranted, setPermissionsGranted] = useState({ location: false, audio: false });
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { 
+    isRecording, 
+    audioUrl, 
+    isUploading, 
+    startRecording, 
+    stopRecording, 
+    uploadAudio, 
+    clearAudio 
+  } = useAudioRecorder();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -175,12 +185,13 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
     }
   };
 
-  const sendMessage = async () => {
-    if (!inputMessage.trim() || isLoading || !survey) return;
+  const sendMessage = async (messageText?: string) => {
+    const messageToSend = messageText || inputMessage.trim();
+    if (!messageToSend || isLoading || !survey) return;
 
     const userMessage: Message = {
       role: 'user',
-      content: inputMessage,
+      content: messageToSend,
       timestamp: new Date()
     };
 
@@ -202,7 +213,10 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
         collected_responses: collectedResponses
       };
 
-      console.log('📤 Sending to ai-multi-rotation:', { conversationHistory, systemContext });
+      console.log('📤 Sending to ai-multi-rotation:', { 
+        messages: conversationHistory.slice(-5), // Only log last 5 messages
+        systemContext 
+      });
 
       const { data, error } = await supabase.functions.invoke('ai-multi-rotation', {
         body: {
@@ -211,14 +225,19 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
         }
       });
 
-      console.log('📥 Response from ai-multi-rotation:', { data, error });
+      console.log('📥 Response received:', { 
+        hasData: !!data, 
+        hasResponse: !!data?.response,
+        error 
+      });
 
       if (error) {
         console.error('❌ Edge function error:', error);
-        throw error;
+        throw new Error(`Erro na função: ${error.message}`);
       }
 
       if (!data || !data.response) {
+        console.error('❌ Invalid response:', data);
         throw new Error('Resposta inválida da IA');
       }
 
@@ -237,12 +256,12 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
         setCollectedResponses(prev => ({ ...prev, ...data.collected_data }));
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error sending message:', error);
       
       const errorMessage: Message = {
         role: 'assistant',
-        content: 'Desculpe, houve um erro ao processar sua resposta. Por favor, tente novamente.',
+        content: `Desculpe, houve um erro: ${error.message || 'Tente novamente.'}`,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -342,6 +361,22 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  const handleSendWithAudio = async () => {
+    if (audioUrl && user && survey) {
+      try {
+        const cloudinaryUrl = await uploadAudio(survey.id, user.id);
+        
+        // Send message with audio reference
+        await sendMessage(`[Áudio enviado: ${cloudinaryUrl}] ${inputMessage}`);
+        clearAudio();
+      } catch (error) {
+        console.error('Error sending audio:', error);
+      }
+    } else {
       sendMessage();
     }
   };
@@ -465,27 +500,57 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
           </ScrollArea>
 
           {!isCompleted && (
+            <>
+            {audioUrl && (
+              <div className="flex items-center gap-2 p-3 bg-secondary/20 rounded-lg mb-2">
+                <audio src={audioUrl} controls className="flex-1" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={clearAudio}
+                  disabled={isUploading}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            
             <div className="flex gap-2">
+              <Button
+                variant={isRecording ? "destructive" : "secondary"}
+                size="icon"
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={isLoading || isCompleted}
+              >
+                {isRecording ? (
+                  <MicOff className="h-4 w-4 animate-pulse" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+              </Button>
+              
               <Input
-                placeholder="Digite sua resposta..."
+                placeholder="Digite sua mensagem..."
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                disabled={isLoading}
+                disabled={isLoading || isCompleted}
                 className="flex-1"
               />
+              
               <Button
-                onClick={sendMessage}
-                disabled={isLoading || !inputMessage.trim()}
+                onClick={handleSendWithAudio}
+                disabled={isLoading || (!inputMessage.trim() && !audioUrl) || isCompleted || isUploading}
                 size="icon"
               >
-                {isLoading ? (
+                {isLoading || isUploading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Send className="h-4 w-4" />
                 )}
               </Button>
             </div>
+            </>
           )}
         </CardContent>
       </Card>
