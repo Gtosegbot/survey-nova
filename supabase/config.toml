@@ -20,3 +20,6 @@ verify_jwt = true
 
 [functions.dispatch-campaign]
 verify_jwt = true
+
+[functions.upload-audio-cloudinary]
+verify_jwt = true
