@@ -7,7 +7,6 @@ import {
   CreditCard,
   Settings,
   Users,
-  MessageSquare,
   Brain,
   Shield,
   Search,
@@ -41,7 +40,6 @@ const navigationItems = [
     group: "IA Assistente",
     items: [
       { title: "Criar com IA", url: "/ai-creator", icon: Brain },
-      { title: "IA Pesquisadora", url: "/ai-researcher", icon: MessageSquare },
     ]
   },
   {

@@ -319,7 +319,7 @@ serve(async (req) => {
 
         } catch (error) {
           console.error(`Failed to send email to ${to}:`, error);
-          failed.push({ to, error: error.message });
+          failed.push({ to, error: error instanceof Error ? error.message : 'Unknown error' });
         }
       }
 
@@ -358,8 +358,8 @@ serve(async (req) => {
   } catch (error) {
     console.error('Email Dispatcher Error:', error);
     
-    return new Response(JSON.stringify({ 
-      error: error.message,
+    return new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     }), {
       status: 500,

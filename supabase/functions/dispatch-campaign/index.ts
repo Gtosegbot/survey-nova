@@ -86,7 +86,7 @@ serve(async (req) => {
     console.error('❌ Dispatch error:', error);
     
     return new Response(JSON.stringify({ 
-      error: error.message || 'Dispatch failed'
+      error: error instanceof Error ? error.message : 'Dispatch failed'
     }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

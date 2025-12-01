@@ -93,7 +93,7 @@ serve(async (req) => {
     console.error('❌ AI Creator Error:', error);
     
     return new Response(JSON.stringify({ 
-      error: error.message || 'AI processing failed',
+      error: error instanceof Error ? error.message : 'AI processing failed',
       timestamp: new Date().toISOString()
     }), {
       status: 500,
