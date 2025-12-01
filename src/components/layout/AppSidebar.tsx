@@ -10,7 +10,8 @@ import {
   Brain,
   Shield,
   Search,
-  Send
+  Send,
+  Gift
 } from "lucide-react";
 
 import {
@@ -54,6 +55,7 @@ const navigationItems = [
   {
     group: "Conta",
     items: [
+      { title: "Indicações", url: "/referrals", icon: Gift },
       { title: "Configurações", url: "/settings", icon: Settings },
     ]
   }

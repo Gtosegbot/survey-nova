@@ -22,6 +22,7 @@ import Validation from "./pages/Validation";
 import Team from "./pages/Team";
 import Dispatchers from "./pages/Dispatchers";
 import Settings from "./pages/Settings";
+import Referrals from "./pages/Referrals";
 import CreateSurvey from "./pages/CreateSurvey";
 import { SurveyResponse } from "./pages/SurveyResponse";
 import { AppLayout } from "./components/layout/AppLayout";
@@ -56,6 +57,7 @@ const App = () => (
             <Route path="/validation" element={<ProtectedRoute><AppLayout><Validation /></AppLayout></ProtectedRoute>} />
             <Route path="/team" element={<ProtectedRoute><AppLayout><Team /></AppLayout></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><AppLayout><div className="p-6"><Settings /></div></AppLayout></ProtectedRoute>} />
+            <Route path="/referrals" element={<ProtectedRoute><AppLayout><Referrals /></AppLayout></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
