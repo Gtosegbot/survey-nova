@@ -58,7 +58,7 @@ serve(async (req) => {
     console.error('❌ Campaign creation error:', error);
     
     return new Response(JSON.stringify({ 
-      error: error.message || 'Campaign creation failed'
+      error: error instanceof Error ? error.message : 'Campaign creation failed'
     }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

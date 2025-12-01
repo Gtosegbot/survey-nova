@@ -311,7 +311,7 @@ serve(async (req) => {
         });
         
       } catch (error) {
-        console.error(`❌ ${provider.name} failed:`, error.message);
+        console.error(`❌ ${provider.name} failed:`, error instanceof Error ? error.message : 'Unknown error');
         lastError = error as Error;
         // Continue to next provider
         continue;
@@ -325,7 +325,7 @@ serve(async (req) => {
     console.error('❌ AI Multi-Rotation Error:', error);
     
     return new Response(JSON.stringify({ 
-      error: error.message || 'AI processing failed',
+      error: error instanceof Error ? error.message : 'AI processing failed',
       timestamp: new Date().toISOString()
     }), {
       status: 500,

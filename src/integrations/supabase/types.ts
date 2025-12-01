@@ -342,6 +342,36 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_transactions_aistudio: {
+        Row: {
+          amount: number
+          channel: string | null
+          description: string | null
+          id: number
+          timestamp: string | null
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          channel?: string | null
+          description?: string | null
+          id?: number
+          timestamp?: string | null
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          channel?: string | null
+          description?: string | null
+          id?: number
+          timestamp?: string | null
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       field_sessions: {
         Row: {
           agent_id: string
@@ -428,6 +458,63 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      perfis_aistudio: {
+        Row: {
+          credits: number | null
+          email: string | null
+          id: string
+          nome: string | null
+          referral_code: string | null
+          referred_by: string | null
+          role: string | null
+        }
+        Insert: {
+          credits?: number | null
+          email?: string | null
+          id: string
+          nome?: string | null
+          referral_code?: string | null
+          referred_by?: string | null
+          role?: string | null
+        }
+        Update: {
+          credits?: number | null
+          email?: string | null
+          id?: string
+          nome?: string | null
+          referral_code?: string | null
+          referred_by?: string | null
+          role?: string | null
+        }
+        Relationships: []
+      }
+      pesquisas_aistudio: {
+        Row: {
+          created_at: string | null
+          creator_id: string | null
+          data: Json | null
+          description: string | null
+          id: string
+          title: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          creator_id?: string | null
+          data?: Json | null
+          description?: string | null
+          id: string
+          title?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          creator_id?: string | null
+          data?: Json | null
+          description?: string | null
+          id?: string
+          title?: string | null
         }
         Relationships: []
       }
@@ -549,6 +636,41 @@ export type Database = {
             columns: ["response_id"]
             isOneToOne: false
             referencedRelation: "survey_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      respostas_aistudio: {
+        Row: {
+          collector_id: string | null
+          created_at: string | null
+          data: Json | null
+          id: string
+          respondent_id: string | null
+          survey_id: string | null
+        }
+        Insert: {
+          collector_id?: string | null
+          created_at?: string | null
+          data?: Json | null
+          id: string
+          respondent_id?: string | null
+          survey_id?: string | null
+        }
+        Update: {
+          collector_id?: string | null
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          respondent_id?: string | null
+          survey_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "respostas_aistudio_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "pesquisas_aistudio"
             referencedColumns: ["id"]
           },
         ]
