@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Send,
   Mail,
@@ -178,24 +179,94 @@ export default function Dispatchers() {
 
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const campaign: Campaign = {
-        id: Date.now().toString(),
-        name: newCampaign.name,
-        type: newCampaign.type,
-        status: newCampaign.scheduleDate ? 'scheduled' : 'draft',
-        recipients: 150, // Simulated
-        sent: 0,
+      // Criar campanha no banco via Supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      const { data: campaign, error: campaignError } = await supabase
+        .from('campaigns')
+        .insert({
+          user_id: user.id,
+          name: newCampaign.name,
+          type: newCampaign.type,
+          status: newCampaign.scheduleDate ? 'scheduled' : 'draft',
+          scheduled_for: newCampaign.scheduleDate 
+            ? new Date(`${newCampaign.scheduleDate}T${newCampaign.scheduleTime}`).toISOString() 
+            : null,
+          survey_id: selectedSurvey,
+          content: {
+            template: newCampaign.selectedTemplate,
+            customMessage: newCampaign.customMessage
+          }
+        })
+        .select()
+        .single();
+
+      if (campaignError) throw campaignError;
+
+      // Se não for agendada, iniciar disparo imediatamente via n8n
+      if (!newCampaign.scheduleDate) {
+        const { data: surveyData } = await supabase
+          .from('surveys')
+          .select('id, title')
+          .eq('id', selectedSurvey)
+          .single();
+
+        const { data: contactsData } = await supabase
+          .from('contacts')
+          .select('name, email, phone')
+          .eq('user_id', user.id)
+          .limit(100);
+
+        if (contactsData && contactsData.length > 0) {
+          const recipients = contactsData.map(c => ({
+            name: c.name,
+            contact: newCampaign.type === 'email' ? c.email : c.phone
+          })).filter(r => r.contact);
+
+          // Chamar edge function n8n-dispatcher
+          const { error: dispatchError } = await supabase.functions.invoke('n8n-dispatcher', {
+            body: {
+              channel: newCampaign.type,
+              recipients,
+              message: {
+                subject: `Participe: ${surveyData?.title}`,
+                content: newCampaign.customMessage || `Você foi convidado para participar da pesquisa "${surveyData?.title}". Sua opinião é muito importante!`,
+                surveyLink: `${window.location.origin}/research/${selectedSurvey}`
+              },
+              campaignId: campaign.id,
+              userId: user.id
+            }
+          });
+
+          if (dispatchError) {
+            console.error('Erro no disparo:', dispatchError);
+            toast({
+              title: "Aviso",
+              description: "Campanha criada mas houve erro no disparo. Verifique seus créditos.",
+              variant: "destructive"
+            });
+          }
+        }
+      }
+
+      const newCampaignUI: Campaign = {
+        id: campaign.id,
+        name: campaign.name,
+        type: campaign.type as 'email' | 'whatsapp' | 'sms',
+        status: campaign.status as Campaign['status'],
+        recipients: 150,
+        sent: campaign.sent_count || 0,
         opened: 0,
-        responded: 0,
-        scheduledFor: newCampaign.scheduleDate ? new Date(`${newCampaign.scheduleDate}T${newCampaign.scheduleTime}`) : undefined,
-        createdAt: new Date()
+        responded: campaign.response_count || 0,
+        scheduledFor: campaign.scheduled_for ? new Date(campaign.scheduled_for) : undefined,
+        createdAt: new Date(campaign.created_at)
       };
       
-      setCampaigns(prev => [campaign, ...prev]);
+      setCampaigns(prev => [newCampaignUI, ...prev]);
       
-      // Reset form
       setNewCampaign({
         name: '',
         type: 'whatsapp',
@@ -209,12 +280,14 @@ export default function Dispatchers() {
       
       toast({
         title: "Campanha Criada",
-        description: `Campanha "${campaign.name}" criada com sucesso.`
+        description: `Campanha "${campaign.name}" criada e ${newCampaignUI.scheduledFor ? 'agendada' : 'disparada'} com sucesso!`
       });
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Erro ao criar campanha:', errorMessage);
       toast({
         title: "Erro",
-        description: "Não foi possível criar a campanha.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {

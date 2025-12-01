@@ -121,7 +121,7 @@ export default function AICreator() {
 
   const callAIRotation = async (conversationHistory: Message[]): Promise<string> => {
     try {
-      console.log('🤖 Calling AI with context:', surveyContext);
+      console.log('🤖 Calling n8n AI webhook with context:', surveyContext);
       
       const formattedMessages = conversationHistory.map(msg => ({
         role: msg.type === 'user' ? 'user' : 'assistant',
@@ -146,27 +146,39 @@ REGRAS DE ANÁLISE:
 
 Seja direto e objetivo.`;
 
-      const { data, error } = await supabase.functions.invoke('ai-multi-rotation', {
-        body: { 
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...formattedMessages
-          ]
+      const payload = {
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...formattedMessages
+        ],
+        metadata: {
+          context: surveyContext,
+          timestamp: new Date().toISOString()
         }
+      };
+
+      const N8N_AI_WEBHOOK = 'https://workwebhook.disparoseguro.com/webhook/db8e97f8-21d6-4bc3-a3ea-10cc77a44e6e/chat';
+      
+      const response = await fetch(N8N_AI_WEBHOOK, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
       });
 
-      if (error) {
-        console.error('❌ AI API Error:', error);
-        throw error;
+      if (!response.ok) {
+        throw new Error(`n8n webhook error: ${response.status}`);
       }
 
-      const aiMessage = data?.choices?.[0]?.message?.content || 
-        'Desculpe, tive um problema. Pode repetir?';
+      const data = await response.json();
+      const aiMessage = data.message || data.response || 'Desculpe, tive um problema. Pode repetir?';
 
-      console.log('🤖 AI Response:', aiMessage);
+      console.log('🤖 n8n AI Response:', aiMessage);
       return aiMessage;
     } catch (error) {
-      console.error('❌ Error calling AI:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('❌ Error calling n8n AI:', errorMessage);
       return 'Desculpe, estou tendo problemas técnicos. Tente novamente em alguns instantes.';
     }
   };

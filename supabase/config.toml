@@ -23,3 +23,6 @@ verify_jwt = true
 
 [functions.upload-audio-cloudinary]
 verify_jwt = true
+
+[functions.n8n-dispatcher]
+verify_jwt = true

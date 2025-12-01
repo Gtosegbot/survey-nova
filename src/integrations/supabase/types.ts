@@ -563,6 +563,9 @@ export type Database = {
           id: string
           permissions: Json | null
           plan_type: string | null
+          referral_code: string | null
+          trial_responses_limit: number | null
+          trial_responses_used: number | null
           updated_at: string
           user_id: string
         }
@@ -574,6 +577,9 @@ export type Database = {
           id?: string
           permissions?: Json | null
           plan_type?: string | null
+          referral_code?: string | null
+          trial_responses_limit?: number | null
+          trial_responses_used?: number | null
           updated_at?: string
           user_id: string
         }
@@ -585,8 +591,41 @@ export type Database = {
           id?: string
           permissions?: Json | null
           plan_type?: string | null
+          referral_code?: string | null
+          trial_responses_limit?: number | null
+          trial_responses_used?: number | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          credited_at: string | null
+          id: string
+          referral_code: string
+          referred_id: string
+          referrer_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          credited_at?: string | null
+          id?: string
+          referral_code: string
+          referred_id: string
+          referrer_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          credited_at?: string | null
+          id?: string
+          referral_code?: string
+          referred_id?: string
+          referrer_id?: string
+          status?: string
         }
         Relationships: []
       }
@@ -1060,6 +1099,7 @@ export type Database = {
     }
     Functions: {
       check_survey_quotas: { Args: { survey_uuid: string }; Returns: boolean }
+      generate_referral_code: { Args: never; Returns: string }
       get_user_roles: {
         Args: { _user_id: string }
         Returns: {
@@ -1078,6 +1118,10 @@ export type Database = {
         Returns: undefined
       }
       is_user_admin: { Args: { user_email: string }; Returns: boolean }
+      process_referral_credits: {
+        Args: { p_referred_id: string }
+        Returns: boolean
+      }
       update_user_credits: {
         Args: {
           p_amount: number
