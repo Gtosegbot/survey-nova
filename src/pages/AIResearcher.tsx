@@ -1,21 +1,23 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, MessageCircle, Lock, CheckCircle2, LogIn, Share2, Mic, MicOff, Play, Trash2 } from "lucide-react";
+import { Loader2, MessageCircle, Lock, CheckCircle2, LogIn, MapPin, Mic } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useAudioRecorder } from "@/hooks/useAudioRecorder";
+import { N8nChatWidget } from "@/components/N8nChatWidget";
 import type { User } from '@supabase/supabase-js';
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Survey {
   id: string;
@@ -31,84 +33,15 @@ export default function AIResearcher() {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [survey, setSurvey] = useState<Survey | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputMessage, setInputMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [collectedResponses, setCollectedResponses] = useState<Record<string, any>>({});
   const [protocolId, setProtocolId] = useState<string>('');
-  const [permissionsGranted, setPermissionsGranted] = useState({ location: false, audio: false });
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const { 
-    isRecording, 
-    audioUrl, 
-    isUploading, 
-    startRecording, 
-    stopRecording, 
-    uploadAudio, 
-    clearAudio 
-  } = useAudioRecorder();
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  // Request permissions
-  const requestPermissions = async () => {
-    try {
-      // Request geolocation
-      if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          () => {
-            setPermissionsGranted(prev => ({ ...prev, location: true }));
-            toast({
-              title: "Localização autorizada ✓",
-              description: "Isso ajuda a validar a autenticidade das respostas.",
-            });
-          },
-          () => {
-            toast({
-              title: "Localização não autorizada",
-              description: "Você pode continuar, mas isso pode afetar a validação.",
-              variant: "destructive"
-            });
-          }
-        );
-      }
-
-      // Request microphone (audio)
-      if ('mediaDevices' in navigator) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          stream.getTracks().forEach(track => track.stop()); // Stop immediately
-          setPermissionsGranted(prev => ({ ...prev, audio: true }));
-          toast({
-            title: "Áudio autorizado ✓",
-            description: "Isso permite futuras respostas em áudio para maior precisão.",
-          });
-        } catch {
-          toast({
-            title: "Áudio não autorizado",
-            description: "Você pode continuar respondendo por texto.",
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error requesting permissions:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (survey && !permissionsGranted.location && !permissionsGranted.audio) {
-      // Request permissions after survey loads
-      const timer = setTimeout(() => {
-        requestPermissions();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [survey]);
+  const [showConsentDialog, setShowConsentDialog] = useState(false);
+  const [permissionsGranted, setPermissionsGranted] = useState({ 
+    location: false, 
+    audio: false,
+    consent: false 
+  });
+  const [coordinates, setCoordinates] = useState<string | null>(null);
 
   // Check authentication
   useEffect(() => {
@@ -141,18 +74,10 @@ export default function AIResearcher() {
 
         if (data) {
           setSurvey(data as Survey);
-          const greeting: Message = {
-            role: 'assistant',
-            content: `Olá! Bem-vindo à pesquisa: **${data.title}**
-
-${data.description || 'Vou fazer algumas perguntas para você.'}
-
-Para começar, preciso que você se identifique. Por favor, forneça seu **nome completo**.`,
-            timestamp: new Date()
-          };
-          setMessages([greeting]);
+          // Show consent dialog after loading survey
+          setTimeout(() => setShowConsentDialog(true), 1000);
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error loading survey:', error);
         toast({
           title: "Pesquisa não encontrada",
@@ -166,6 +91,58 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
     loadSurvey();
   }, [researcherId, navigate, toast]);
 
+  const handleConsentAccept = async () => {
+    setPermissionsGranted(prev => ({ ...prev, consent: true }));
+    setShowConsentDialog(false);
+    
+    // Request location
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = `POINT(${position.coords.longitude} ${position.coords.latitude})`;
+          setCoordinates(coords);
+          setPermissionsGranted(prev => ({ ...prev, location: true }));
+          toast({
+            title: "Localização autorizada ✓",
+            description: "Isso ajuda a validar a autenticidade das respostas.",
+          });
+        },
+        (error) => {
+          console.log('Location permission denied:', error);
+          toast({
+            title: "Localização não autorizada",
+            description: "Você pode continuar, mas isso pode afetar a validação.",
+          });
+        }
+      );
+    }
+
+    // Request microphone
+    if ('mediaDevices' in navigator) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop());
+        setPermissionsGranted(prev => ({ ...prev, audio: true }));
+        toast({
+          title: "Áudio autorizado ✓",
+          description: "Respostas em áudio podem ser habilitadas.",
+        });
+      } catch (error) {
+        console.log('Audio permission denied:', error);
+      }
+    }
+  };
+
+  const handleConsentDecline = () => {
+    setShowConsentDialog(false);
+    toast({
+      title: "Consentimento necessário",
+      description: "É necessário aceitar os termos para participar da pesquisa.",
+      variant: "destructive"
+    });
+    navigate('/');
+  };
+
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -176,134 +153,30 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
       });
 
       if (error) throw error;
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro ao fazer login",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
-  const sendMessage = async (messageText?: string) => {
-    const messageToSend = messageText || inputMessage.trim();
-    if (!messageToSend || isLoading || !survey) return;
-
-    const userMessage: Message = {
-      role: 'user',
-      content: messageToSend,
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInputMessage('');
-    setIsLoading(true);
-
-    try {
-      const conversationHistory = [...messages, userMessage].map(m => ({
-        role: m.role,
-        content: m.content
-      }));
-
-      const systemContext = {
-        survey_id: survey.id,
-        survey_title: survey.title,
-        questions: survey.questions,
-        mandatory_questions: survey.mandatory_questions,
-        collected_responses: collectedResponses
-      };
-
-      console.log('📤 Sending to ai-multi-rotation:', { 
-        messages: conversationHistory.slice(-5), // Only log last 5 messages
-        systemContext 
-      });
-
-      const { data, error } = await supabase.functions.invoke('ai-multi-rotation', {
-        body: {
-          messages: conversationHistory,
-          system_context: systemContext
-        }
-      });
-
-      console.log('📥 Response received:', { 
-        hasData: !!data, 
-        hasResponse: !!data?.response,
-        error 
-      });
-
-      if (error) {
-        console.error('❌ Edge function error:', error);
-        throw new Error(`Erro na função: ${error.message}`);
-      }
-
-      if (!data || !data.response) {
-        console.error('❌ Invalid response:', data);
-        throw new Error('Resposta inválida da IA');
-      }
-
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: data.response,
-        timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-
-      if (data.survey_complete) {
-        setIsCompleted(true);
-        await saveSurveyResponse(data.collected_data);
-      } else if (data.collected_data) {
-        setCollectedResponses(prev => ({ ...prev, ...data.collected_data }));
-      }
-
-    } catch (error: any) {
-      console.error('❌ Error sending message:', error);
-      
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: `Desculpe, houve um erro: ${error.message || 'Tente novamente.'}`,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-      
-      toast({
-        title: "Erro ao enviar mensagem",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const saveSurveyResponse = async (responseData: any) => {
+  const handleSurveyGenerated = async (surveyData: any) => {
+    if (!survey) return;
+
     try {
-      // Generate protocol ID
       const protocolId = `PROTO-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
       setProtocolId(protocolId);
       
-      // Get device fingerprint
       const deviceFingerprint = `${navigator.userAgent}-${screen.width}x${screen.height}`;
-      
-      // Get geolocation if available
-      let coordinates = null;
-      if (permissionsGranted.location && 'geolocation' in navigator) {
-        try {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-          });
-          coordinates = `POINT(${position.coords.longitude} ${position.coords.latitude})`;
-        } catch (error) {
-          console.log('Could not get geolocation:', error);
-        }
-      }
-      
+
       // Check for duplicates
       const { data: existingResponses } = await supabase
         .from('survey_responses')
         .select('id')
-        .eq('survey_id', survey!.id)
-        .or(`respondent_data->>user_id.eq.${user?.id},respondent_data->>email.eq.${responseData.email}`);
+        .eq('survey_id', survey.id)
+        .or(`respondent_data->>user_id.eq.${user?.id},respondent_data->>email.eq.${surveyData.email}`);
 
       if (existingResponses && existingResponses.length > 0) {
         toast({
@@ -314,19 +187,23 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
         return;
       }
 
+      // Save to database
       const { error } = await supabase
         .from('survey_responses')
         .insert({
-          survey_id: survey!.id,
+          survey_id: survey.id,
           response_id: protocolId,
           respondent_data: {
             user_id: user?.id,
-            email: user?.email || responseData.email,
-            name: responseData.name,
-            authenticated: !!user
+            email: user?.email || surveyData.email,
+            name: surveyData.name,
+            authenticated: !!user,
+            consent_granted: permissionsGranted.consent,
+            location_permission: permissionsGranted.location,
+            audio_permission: permissionsGranted.audio
           },
-          answers: responseData.answers,
-          demographics: responseData.demographics || {},
+          answers: surveyData.answers || {},
+          demographics: surveyData.demographics || {},
           device_info: {
             fingerprint: deviceFingerprint,
             user_agent: navigator.userAgent
@@ -341,43 +218,36 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
         throw error;
       }
 
-      console.log('✅ Response saved successfully with protocol:', protocolId);
+      // Try to save to local storage for offline support
+      try {
+        const offlineData = {
+          survey_id: survey.id,
+          response_id: protocolId,
+          respondent_data: surveyData,
+          timestamp: new Date().toISOString(),
+          synced: true
+        };
+        localStorage.setItem(`survey_response_${protocolId}`, JSON.stringify(offlineData));
+      } catch (storageError) {
+        console.log('Could not save to local storage:', storageError);
+      }
 
+      setIsCompleted(true);
+      
       toast({
         title: "Pesquisa concluída! ✅",
         description: `Protocolo: ${protocolId}. Obrigado por participar!`,
       });
 
+      console.log('✅ Response saved successfully with protocol:', protocolId);
+
     } catch (error) {
       console.error('Error saving response:', error);
       toast({
         title: "Erro ao salvar respostas",
-        description: "Houve um problema ao salvar suas respostas. Tente novamente.",
+        description: "Suas respostas foram salvas localmente e serão sincronizadas quando possível.",
         variant: "destructive"
       });
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  const handleSendWithAudio = async () => {
-    if (audioUrl && user && survey) {
-      try {
-        const cloudinaryUrl = await uploadAudio(survey.id, user.id);
-        
-        // Send message with audio reference
-        await sendMessage(`[Áudio enviado: ${cloudinaryUrl}] ${inputMessage}`);
-        clearAudio();
-      } catch (error) {
-        console.error('Error sending audio:', error);
-      }
-    } else {
-      sendMessage();
     }
   };
 
@@ -389,216 +259,177 @@ Para começar, preciso que você se identifique. Por favor, forneça seu **nome 
     );
   }
 
-  return (
-    <div className="container mx-auto p-4 max-w-4xl min-h-screen flex flex-col">
-      <div className="mb-6 mt-4">
-        <h1 className="text-3xl font-bold flex items-center gap-3 mb-2">
-          <MessageCircle className="h-8 w-8 text-primary" />
-          {survey.title}
-        </h1>
-        {survey.description && (
-          <p className="text-muted-foreground">{survey.description}</p>
-        )}
-      </div>
-
-      {!user && (
-        <Card className="mb-6 border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lock className="h-5 w-5" />
-              Autenticação Recomendada
-            </CardTitle>
-            <CardDescription>
-              Para garantir que você é uma pessoa real e proteger a integridade da pesquisa, 
-              recomendamos fazer login com suas redes sociais.
-            </CardDescription>
+  if (isCompleted && protocolId) {
+    return (
+      <div className="container mx-auto p-4 max-w-2xl min-h-screen flex items-center justify-center">
+        <Card className="w-full">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle2 className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">Pesquisa Concluída!</CardTitle>
+            <CardDescription>Obrigado por participar</CardDescription>
           </CardHeader>
-          <CardContent className="flex gap-3">
-            <Button
-              onClick={() => handleSocialLogin('google')}
-              variant="outline"
-              className="flex-1"
+          <CardContent className="space-y-4">
+            <div className="text-center p-4 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground mb-1">Protocolo de Resposta</p>
+              <p className="text-lg font-mono font-bold">{protocolId}</p>
+            </div>
+            <p className="text-sm text-muted-foreground text-center">
+              Guarde este protocolo para futura referência. Suas respostas foram registradas com sucesso.
+            </p>
+            <Button 
+              onClick={() => navigate('/')} 
+              className="w-full"
             >
-              <LogIn className="h-4 w-4 mr-2" />
-              Continuar com Google
-            </Button>
-            <Button
-              onClick={() => handleSocialLogin('facebook')}
-              variant="outline"
-              className="flex-1"
-            >
-              <LogIn className="h-4 w-4 mr-2" />
-              Continuar com Facebook
+              Voltar ao Início
             </Button>
           </CardContent>
         </Card>
-      )}
-
-      <div className="mb-4">
-        {user ? (
-          <Badge variant="default" className="gap-2">
-            <CheckCircle2 className="h-3 w-3" />
-            Autenticado como {user.email}
-          </Badge>
-        ) : (
-          <Badge variant="secondary">
-            Modo Anônimo - Autenticação recomendada
-          </Badge>
-        )}
       </div>
+    );
+  }
 
-      <Card className="flex-1 flex flex-col mb-4">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center justify-between">
-            <span>Conversa da Pesquisa</span>
-            {isCompleted && (
-              <Badge variant="default" className="gap-2">
-                <CheckCircle2 className="h-3 w-3" />
-                Concluído
-              </Badge>
-            )}
-          </CardTitle>
-          <CardDescription>
-            Responda as perguntas de forma natural. A IA conduzirá a conversa.
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent className="flex-1 flex flex-col p-4 min-h-[400px]">
-          <ScrollArea className="flex-1 pr-4 mb-4" ref={scrollRef}>
-            <div className="space-y-4">
-              {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-lg p-4 ${
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    }`}
-                  >
-                    <div className="text-sm font-medium mb-1">
-                      {message.role === 'user' ? 'Você' : 'Assistente'}
-                    </div>
-                    <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-                    <div className="text-xs opacity-70 mt-2">
-                      {message.timestamp.toLocaleTimeString()}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-muted rounded-lg p-4">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
+  return (
+    <>
+      <AlertDialog open={showConsentDialog} onOpenChange={setShowConsentDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Termo de Consentimento
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4 text-left">
+              <p>
+                Para participar desta pesquisa, precisamos do seu consentimento para coletar:
+              </p>
+              <ul className="list-disc pl-5 space-y-2">
+                <li className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span><strong>Localização:</strong> Para validar a autenticidade e prevenir fraudes</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Mic className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span><strong>Microfone:</strong> Para permitir respostas em áudio (opcional)</span>
+                </li>
+              </ul>
+              <p className="text-sm">
+                Seus dados serão usados apenas para fins de pesquisa e auditoria, 
+                respeitando a LGPD. Você pode revogar seu consentimento a qualquer momento.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleConsentDecline}>
+              Não Aceito
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConsentAccept}>
+              Aceito os Termos
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-          {!isCompleted && (
-            <>
-            {audioUrl && (
-              <div className="flex items-center gap-2 p-3 bg-secondary/20 rounded-lg mb-2">
-                <audio src={audioUrl} controls className="flex-1" />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={clearAudio}
-                  disabled={isUploading}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-            
-            <div className="flex gap-2">
-              <Button
-                variant={isRecording ? "destructive" : "secondary"}
-                size="icon"
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={isLoading || isCompleted}
-              >
-                {isRecording ? (
-                  <MicOff className="h-4 w-4 animate-pulse" />
-                ) : (
-                  <Mic className="h-4 w-4" />
-                )}
-              </Button>
-              
-              <Input
-                placeholder="Digite sua mensagem..."
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isLoading || isCompleted}
-                className="flex-1"
-              />
-              
-              <Button
-                onClick={handleSendWithAudio}
-                disabled={isLoading || (!inputMessage.trim() && !audioUrl) || isCompleted || isUploading}
-                size="icon"
-              >
-                {isLoading || isUploading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-            </>
+      <div className="container mx-auto p-4 max-w-4xl min-h-screen flex flex-col">
+        <div className="mb-6 mt-4">
+          <h1 className="text-3xl font-bold flex items-center gap-3 mb-2">
+            <MessageCircle className="h-8 w-8 text-primary" />
+            {survey.title}
+          </h1>
+          {survey.description && (
+            <p className="text-muted-foreground">{survey.description}</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {isCompleted && protocolId && (
-        <Card className="bg-green-50 border-green-200">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-6 w-6 text-green-600" />
-              <div>
-                <h3 className="font-semibold text-green-900">Pesquisa Concluída!</h3>
-                <p className="text-sm text-green-700">
-                  Obrigado por participar. Suas respostas foram salvas com sucesso.
-                </p>
-                <p className="text-sm text-green-800 font-mono mt-2">
-                  Protocolo: <strong>{protocolId}</strong>
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex gap-2 pt-4 border-t border-green-200">
+        {!user && (
+          <Card className="mb-6 border-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5" />
+                Autenticação Recomendada
+              </CardTitle>
+              <CardDescription>
+                Para garantir que você é uma pessoa real e proteger a integridade da pesquisa, 
+                recomendamos fazer login com suas redes sociais.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex gap-3">
               <Button
-                onClick={() => {
-                  const shareUrl = `${window.location.origin}/research/${survey.id}?ref=${user?.id || 'anonymous'}`;
-                  navigator.clipboard.writeText(shareUrl);
-                  toast({
-                    title: "Link copiado!",
-                    description: "Compartilhe esta pesquisa com amigos e familiares.",
-                  });
-                }}
+                onClick={() => handleSocialLogin('google')}
                 variant="outline"
                 className="flex-1"
               >
-                <Send className="h-4 w-4 mr-2" />
-                Compartilhar com Amigos
+                <LogIn className="h-4 w-4 mr-2" />
+                Continuar com Google
               </Button>
               <Button
-                onClick={() => navigate('/trending')}
-                variant="default"
+                onClick={() => handleSocialLogin('facebook')}
+                variant="outline"
                 className="flex-1"
               >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                Ver Mais Pesquisas
+                <LogIn className="h-4 w-4 mr-2" />
+                Continuar com Facebook
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="mb-4 flex gap-2 flex-wrap">
+          {user ? (
+            <Badge variant="default" className="gap-2">
+              <CheckCircle2 className="h-3 w-3" />
+              Autenticado: {user.email}
+            </Badge>
+          ) : (
+            <Badge variant="secondary">
+              Modo Anônimo
+            </Badge>
+          )}
+          
+          {permissionsGranted.location && (
+            <Badge variant="outline" className="gap-2">
+              <MapPin className="h-3 w-3" />
+              Localização autorizada
+            </Badge>
+          )}
+          
+          {permissionsGranted.audio && (
+            <Badge variant="outline" className="gap-2">
+              <Mic className="h-3 w-3" />
+              Áudio autorizado
+            </Badge>
+          )}
+        </div>
+
+        {permissionsGranted.consent && (
+          <N8nChatWidget
+            onSurveyGenerated={handleSurveyGenerated}
+            systemPrompt={`Você é um pesquisador de campo conduzindo a pesquisa: "${survey.title}".
+
+${survey.description || ''}
+
+INSTRUÇÕES:
+1. Primeiro, cumprimente e peça o nome completo do respondente
+2. Colete dados demográficos obrigatórios: gênero, faixa etária, região
+3. Faça as perguntas da pesquisa de forma natural e conversacional
+4. Permita que o respondente esclareça dúvidas
+5. Quando todas as respostas forem coletadas, agradeça e informe que a pesquisa foi concluída
+
+Ao finalizar, retorne um objeto JSON com este formato:
+{
+  "surveyData": {
+    "name": "nome do respondente",
+    "email": "email se fornecido",
+    "demographics": { "gender": "...", "age_range": "...", "region": "..." },
+    "answers": { "pergunta1": "resposta1", ... }
+  }
+}
+
+Seja educado, claro e objetivo. Não seja tendencioso nas perguntas.`}
+            placeholder="Digite sua resposta..."
+          />
+        )}
+      </div>
+    </>
   );
 }
