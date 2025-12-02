@@ -69,7 +69,7 @@ export function FloatingChatButton() {
                   className="w-full justify-start h-auto py-4"
                   variant="outline"
                   onClick={() => {
-                    navigate("/ai-researcher");
+                    navigate("/ai-researcher?mode=create");
                     setIsOpen(false);
                   }}
                 >
@@ -78,7 +78,7 @@ export function FloatingChatButton() {
                     <div>
                       <div className="font-semibold">IA Pesquisadora</div>
                       <div className="text-xs text-muted-foreground">
-                        Responda pesquisas guiado por IA
+                        Crie pesquisas descrevendo em linguagem natural
                       </div>
                     </div>
                   </div>
