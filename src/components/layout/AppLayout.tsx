@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Bell, User, LogOut, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
+import { FloatingChatButton } from "@/components/FloatingChatButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -82,6 +83,9 @@ export function AppLayout({ children }: AppLayoutProps) {
             {children}
           </main>
         </div>
+        
+        {/* Floating Chat Button */}
+        <FloatingChatButton />
       </div>
     </SidebarProvider>
   );
