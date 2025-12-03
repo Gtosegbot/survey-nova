@@ -24,6 +24,7 @@ import Dispatchers from "./pages/Dispatchers";
 import Settings from "./pages/Settings";
 import Referrals from "./pages/Referrals";
 import CreateSurvey from "./pages/CreateSurvey";
+import AuditDashboard from "./pages/AuditDashboard";
 import { SurveyResponse } from "./pages/SurveyResponse";
 import { AppLayout } from "./components/layout/AppLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -58,6 +59,8 @@ const App = () => (
             <Route path="/team" element={<ProtectedRoute><AppLayout><Team /></AppLayout></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><AppLayout><div className="p-6"><Settings /></div></AppLayout></ProtectedRoute>} />
             <Route path="/referrals" element={<ProtectedRoute><AppLayout><Referrals /></AppLayout></ProtectedRoute>} />
+            <Route path="/audit" element={<ProtectedRoute><AppLayout><AuditDashboard /></AppLayout></ProtectedRoute>} />
+            <Route path="/ai-researcher" element={<AIResearcher />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

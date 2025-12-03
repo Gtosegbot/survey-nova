@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronLeft, ChevronRight, CheckCircle, MapPin, Clock, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, MapPin, Clock, Loader2, AlertTriangle } from "lucide-react";
+import { useQuotaCheck } from "@/hooks/useQuotaCheck";
 
 interface Survey {
   id: string;
@@ -30,6 +31,9 @@ export const SurveyResponse = () => {
   const [responses, setResponses] = useState<Record<string, any>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [quotaBlocked, setQuotaBlocked] = useState(false);
+  const [quotaMessage, setQuotaMessage] = useState("");
+  const { checkQuota, incrementQuota } = useQuotaCheck();
 
   // Monitor connection status
   useEffect(() => {
@@ -211,13 +215,32 @@ export const SurveyResponse = () => {
     setIsSubmitting(true);
     
     try {
+      // Check quotas before submitting
+      const quotaResult = await checkQuota(
+        survey.id,
+        responses['gender'],
+        responses['age'] || responses['age_range'],
+        responses['location']
+      );
+
+      if (!quotaResult.allowed) {
+        setQuotaBlocked(true);
+        const messages = Object.values(quotaResult.quotas)
+          .filter((q: any) => q?.full)
+          .map((q: any) => q?.message)
+          .join(' ');
+        setQuotaMessage(messages || 'Cota concluída. Pesquise outra cota.');
+        setIsSubmitting(false);
+        return;
+      }
+
       const responseData = {
         surveyId: survey.id,
         responses,
         submittedAt: new Date().toISOString(),
         demographics: {
           gender: responses['gender'],
-          age: responses['age'] || responses['age_range'],
+          age_range: responses['age'] || responses['age_range'],
           location: responses['location']
         },
         respondentData: {},
@@ -229,6 +252,14 @@ export const SurveyResponse = () => {
       if (isOnline) {
         console.log('🌐 Online - Submitting to Supabase...');
         await submitResponseToSupabase(responseData);
+        
+        // Increment quota counts
+        await incrementQuota(
+          survey.id,
+          responses['gender'],
+          responses['age'] || responses['age_range'],
+          responses['location']
+        );
         
         toast({
           title: "✅ Obrigado!",

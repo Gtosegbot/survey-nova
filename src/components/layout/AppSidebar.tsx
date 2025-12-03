@@ -11,7 +11,9 @@ import {
   Shield,
   Search,
   Send,
-  Gift
+  Gift,
+  ClipboardList,
+  Eye
 } from "lucide-react";
 
 import {
@@ -50,6 +52,8 @@ const navigationItems = [
       { title: "Importar Contatos", url: "/contacts/import", icon: Users },
       { title: "Disparadores", url: "/dispatchers", icon: Send },
       { title: "Validação", url: "/validation", icon: Shield },
+      { title: "Equipe", url: "/team", icon: Users },
+      { title: "Auditoria", url: "/audit", icon: Eye },
     ]
   },
   {

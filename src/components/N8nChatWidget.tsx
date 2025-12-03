@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Bot, User, Send, Loader2, Sparkles, Mic, MicOff, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   id: string;
@@ -268,23 +269,62 @@ export function N8nChatWidget({
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        // Here you could send the audio to a speech-to-text service
-        // For now, we'll just notify the user
-        toast({
-          title: "Áudio gravado",
-          description: "Processamento de voz em desenvolvimento.",
-        });
         stream.getTracks().forEach(track => track.stop());
+        
+        // Convert to base64 and send to speech-to-text
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64Audio = (reader.result as string).split(',')[1];
+          
+          toast({
+            title: "Processando áudio...",
+            description: "Transcrevendo sua mensagem.",
+          });
+          
+          try {
+            const { data, error } = await supabase.functions.invoke('speech-to-text', {
+              body: { audio: base64Audio, language: 'pt' }
+            });
+            
+            if (error) {
+              throw error;
+            }
+            
+            if (data?.text) {
+              setInput(data.text);
+              toast({
+                title: "Transcrição concluída",
+                description: "Revise e envie sua mensagem.",
+              });
+            } else {
+              toast({
+                title: "Não foi possível transcrever",
+                description: "Tente gravar novamente.",
+                variant: "destructive"
+              });
+            }
+          } catch (err) {
+            console.error('Speech-to-text error:', err);
+            toast({
+              title: "Erro na transcrição",
+              description: "Não foi possível processar o áudio.",
+              variant: "destructive"
+            });
+          }
+        };
+        reader.readAsDataURL(audioBlob);
       };
 
       mediaRecorder.start();
