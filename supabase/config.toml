@@ -26,3 +26,6 @@ verify_jwt = true
 
 [functions.n8n-dispatcher]
 verify_jwt = true
+
+[functions.speech-to-text]
+verify_jwt = false

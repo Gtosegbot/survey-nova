@@ -372,6 +372,44 @@ export type Database = {
         }
         Relationships: []
       }
+      dispatch_limits: {
+        Row: {
+          channel: string
+          created_at: string | null
+          current_dispatches: number
+          id: string
+          max_dispatches: number
+          survey_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          channel: string
+          created_at?: string | null
+          current_dispatches?: number
+          id?: string
+          max_dispatches?: number
+          survey_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string | null
+          current_dispatches?: number
+          id?: string
+          max_dispatches?: number
+          survey_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_limits_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       field_sessions: {
         Row: {
           agent_id: string
@@ -460,6 +498,44 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      offline_responses: {
+        Row: {
+          created_at: string | null
+          device_id: string
+          id: string
+          response_data: Json
+          survey_id: string
+          sync_status: string | null
+          synced_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_id: string
+          id?: string
+          response_data: Json
+          survey_id: string
+          sync_status?: string | null
+          synced_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_id?: string
+          id?: string
+          response_data?: Json
+          survey_id?: string
+          sync_status?: string | null
+          synced_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offline_responses_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       perfis_aistudio: {
         Row: {
@@ -892,6 +968,53 @@ export type Database = {
           },
         ]
       }
+      survey_quotas: {
+        Row: {
+          category: string
+          created_at: string | null
+          current_count: number
+          id: string
+          is_complete: boolean | null
+          option_value: string
+          percentage: number | null
+          survey_id: string
+          target_count: number
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          current_count?: number
+          id?: string
+          is_complete?: boolean | null
+          option_value: string
+          percentage?: number | null
+          survey_id: string
+          target_count?: number
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          current_count?: number
+          id?: string
+          is_complete?: boolean | null
+          option_value?: string
+          percentage?: number | null
+          survey_id?: string
+          target_count?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_quotas_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       survey_responses: {
         Row: {
           answers: Json
@@ -1098,6 +1221,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_and_update_quota: {
+        Args: {
+          p_age_range?: string
+          p_gender?: string
+          p_location?: string
+          p_survey_id: string
+        }
+        Returns: Json
+      }
+      check_dispatch_limit: {
+        Args: { p_channel: string; p_count?: number; p_survey_id: string }
+        Returns: Json
+      }
       check_survey_quotas: { Args: { survey_uuid: string }; Returns: boolean }
       generate_referral_code: { Args: never; Returns: string }
       get_user_roles: {
@@ -1110,6 +1246,15 @@ export type Database = {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
+        }
+        Returns: boolean
+      }
+      increment_quota_counts: {
+        Args: {
+          p_age_range?: string
+          p_gender?: string
+          p_location?: string
+          p_survey_id: string
         }
         Returns: boolean
       }
