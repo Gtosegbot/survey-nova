@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +20,9 @@ import {
   Users,
   BarChart3,
   TrendingUp,
-  Plus
+  Plus,
+  PieChart,
+  Target
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -27,6 +30,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { QuotaDashboard } from "@/components/QuotaDashboard";
 
 interface Survey {
   id: string;
@@ -46,6 +56,7 @@ export default function MySurveys() {
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedSurveyForQuotas, setSelectedSurveyForQuotas] = useState<Survey | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -226,6 +237,10 @@ export default function MySurveys() {
                           <BarChart3 className="mr-2 h-4 w-4" />
                           Analytics
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSelectedSurveyForQuotas(survey)}>
+                          <Target className="mr-2 h-4 w-4" />
+                          Ver Cotas
+                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-red-600"
                           onClick={() => handleDelete(survey.id)}
@@ -260,6 +275,24 @@ export default function MySurveys() {
           ))
         )}
       </div>
+
+      {/* Quota Dashboard Dialog */}
+      <Dialog open={!!selectedSurveyForQuotas} onOpenChange={(open) => !open && setSelectedSurveyForQuotas(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Cotas - {selectedSurveyForQuotas?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedSurveyForQuotas && (
+            <QuotaDashboard 
+              surveyId={selectedSurveyForQuotas.id}
+              totalTarget={selectedSurveyForQuotas.target_sample_size}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Save, Settings, Check, Users, Calculator, PieChart, HelpCircle, Info } from "lucide-react";
+import { Plus, Trash2, Save, Settings, Check, Users, Calculator, PieChart, HelpCircle, Info, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { QuestionTypeGuide } from "./QuestionTypeGuide";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Tooltip,
   TooltipContent,
@@ -61,10 +64,13 @@ interface CreateSurveyFormProps {
 
 export const CreateSurveyForm = ({ initialData, isEditing }: CreateSurveyFormProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [surveyTitle, setSurveyTitle] = useState(initialData?.title || "");
   const [surveyDescription, setSurveyDescription] = useState(initialData?.description || "");
   const [questions, setQuestions] = useState<Question[]>(initialData?.questions || []);
   const [credits, setCredits] = useState(100.00);
+  const [isSaving, setIsSaving] = useState(false);
   const [surveyConfig, setSurveyConfig] = useState<SurveyConfig>({
     totalParticipants: initialData?.target_sample_size || 100,
     quotas: [],
@@ -252,7 +258,7 @@ export const CreateSurveyForm = ({ initialData, isEditing }: CreateSurveyFormPro
     );
   };
 
-  const saveSurvey = () => {
+  const saveSurvey = async () => {
     const unsavedQuestions = questions.filter(q => !q.saved);
     const enabledMandatory = mandatoryQuestions.filter(q => q.enabled);
     
@@ -260,6 +266,15 @@ export const CreateSurveyForm = ({ initialData, isEditing }: CreateSurveyFormPro
       toast({
         title: "Erro",
         description: "A pesquisa precisa ter um título.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar logado para criar uma pesquisa.",
         variant: "destructive"
       });
       return;
@@ -283,40 +298,106 @@ export const CreateSurveyForm = ({ initialData, isEditing }: CreateSurveyFormPro
       return;
     }
 
-    // Salvar pesquisa
-    const surveyData = {
-      id: Date.now().toString(),
-      title: surveyTitle,
-      description: surveyDescription,
-      mandatoryQuestions: enabledMandatory,
-      questions: questions,
-      config: surveyConfig,
-      shareLink: `${window.location.origin}/survey/${Date.now()}`,
-      createdAt: new Date(),
-      status: 'draft',
-      estimatedCost: calculateSurveyCost()
-    };
+    setIsSaving(true);
 
-    function calculateSurveyCost() {
-      const baseCost = 0.50; // R$ 0,50 por resposta
-      const totalCost = surveyConfig.totalParticipants * baseCost;
-      return totalCost.toFixed(2);
+    try {
+      const baseCost = 0.50;
+      const estimatedCost = surveyConfig.totalParticipants * baseCost;
+
+      // Build mandatory questions object
+      const mandatoryQuestionsObj: Record<string, any> = {};
+      enabledMandatory.forEach(q => {
+        mandatoryQuestionsObj[q.category] = {
+          title: q.title,
+          options: q.options,
+          enabled: q.enabled
+        };
+      });
+
+      // Save survey to Supabase
+      const surveyInsertData = {
+        user_id: user.id,
+        title: surveyTitle,
+        description: surveyDescription,
+        questions: questions as any,
+        mandatory_questions: mandatoryQuestionsObj as any,
+        target_sample_size: surveyConfig.totalParticipants,
+        methodology: surveyConfig.methodology,
+        estimated_cost: estimatedCost,
+        status: 'draft',
+        is_public: true
+      };
+
+      const { data: surveyData, error: surveyError } = await supabase
+        .from('surveys')
+        .insert(surveyInsertData)
+        .select()
+        .single();
+
+      if (surveyError) throw surveyError;
+
+      console.log('✅ Survey created:', surveyData);
+
+      // Create quota records if quotas were calculated
+      if (surveyConfig.quotas.length > 0) {
+        const quotaRecords = surveyConfig.quotas.map(quota => ({
+          survey_id: surveyData.id,
+          category: quota.category === 'gender' ? 'gender' : 
+                    quota.category === 'age' ? 'age_range' : 'location',
+          option_value: quota.option,
+          target_count: quota.targetCount,
+          current_count: 0,
+          percentage: quota.percentage,
+          is_complete: false
+        }));
+
+        const { error: quotaError } = await supabase
+          .from('survey_quotas')
+          .insert(quotaRecords);
+
+        if (quotaError) {
+          console.error('⚠️ Error creating quotas:', quotaError);
+        } else {
+          console.log('✅ Quotas created:', quotaRecords.length);
+        }
+      }
+
+      // Create dispatch limits with defaults
+      const dispatchLimits = [
+        { survey_id: surveyData.id, channel: 'email', max_dispatches: 10000, current_dispatches: 0 },
+        { survey_id: surveyData.id, channel: 'sms', max_dispatches: 1000, current_dispatches: 0 },
+        { survey_id: surveyData.id, channel: 'whatsapp', max_dispatches: 500, current_dispatches: 0 },
+        { survey_id: surveyData.id, channel: 'voip', max_dispatches: 300, current_dispatches: 0 }
+      ];
+
+      const { error: dispatchError } = await supabase
+        .from('dispatch_limits')
+        .insert(dispatchLimits);
+
+      if (dispatchError) {
+        console.error('⚠️ Error creating dispatch limits:', dispatchError);
+      } else {
+        console.log('✅ Dispatch limits created');
+      }
+
+      toast({
+        title: "Sucesso!",
+        description: `Pesquisa "${surveyTitle}" criada com ${surveyConfig.quotas.length} cotas demográficas!`,
+      });
+      
+      // Navigate to surveys page
+      navigate('/my-surveys');
+      
+    } catch (error: any) {
+      console.error('❌ Error saving survey:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Erro ao salvar pesquisa. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
     }
-
-    // Salvar no localStorage temporariamente
-    const existingSurveys = JSON.parse(localStorage.getItem('surveys') || '[]');
-    existingSurveys.push(surveyData);
-    localStorage.setItem('surveys', JSON.stringify(existingSurveys));
-
-    toast({
-      title: "Sucesso!",
-      description: "Pesquisa criada com sucesso!",
-    });
-    
-    // Reset form
-    setSurveyTitle("");
-    setSurveyDescription("");
-    setQuestions([]);
   };
 
   return (
@@ -782,9 +863,13 @@ export const CreateSurveyForm = ({ initialData, isEditing }: CreateSurveyFormPro
         <Button variant="outline" onClick={() => window.location.href = '/dashboard'}>
           Cancelar
         </Button>
-        <Button onClick={saveSurvey}>
-          <Save className="mr-2 h-4 w-4" />
-          Salvar Pesquisa
+        <Button onClick={saveSurvey} disabled={isSaving}>
+          {isSaving ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-4 w-4" />
+          )}
+          {isSaving ? 'Salvando...' : 'Salvar Pesquisa'}
         </Button>
       </div>
     </div>
