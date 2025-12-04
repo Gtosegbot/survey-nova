@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import { NotificationListener } from "./components/NotificationListener";
+import { OfflineSyncStatus } from "./components/OfflineSyncStatus";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -38,6 +39,7 @@ const App = () => (
           <NotificationListener />
           <Toaster />
           <Sonner />
+          <OfflineSyncStatus />
           <BrowserRouter>
             <Routes>
             <Route path="/" element={<Index />} />
