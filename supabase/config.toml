@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.ai-rotation]
 verify_jwt = false
 
+[functions.ai-survey-creator]
+verify_jwt = false
+
 [functions.email-dispatcher]
 verify_jwt = true
 

@@ -362,23 +362,9 @@ export const CreateSurveyForm = ({ initialData, isEditing }: CreateSurveyFormPro
         }
       }
 
-      // Create dispatch limits with defaults
-      const dispatchLimits = [
-        { survey_id: surveyData.id, channel: 'email', max_dispatches: 10000, current_dispatches: 0 },
-        { survey_id: surveyData.id, channel: 'sms', max_dispatches: 1000, current_dispatches: 0 },
-        { survey_id: surveyData.id, channel: 'whatsapp', max_dispatches: 500, current_dispatches: 0 },
-        { survey_id: surveyData.id, channel: 'voip', max_dispatches: 300, current_dispatches: 0 }
-      ];
-
-      const { error: dispatchError } = await supabase
-        .from('dispatch_limits')
-        .insert(dispatchLimits);
-
-      if (dispatchError) {
-        console.error('⚠️ Error creating dispatch limits:', dispatchError);
-      } else {
-        console.log('✅ Dispatch limits created');
-      }
+      // Note: Dispatch limits removed - unlimited dispatches allowed
+      // Only quota limits are enforced when targets are reached
+      console.log('✅ Survey created without dispatch limits (unlimited dispatches)');
 
       toast({
         title: "Sucesso!",
