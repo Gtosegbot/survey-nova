@@ -58,20 +58,43 @@ export const SurveyResponse = () => {
       if (!surveyId) return;
 
       try {
-        const { data, error } = await supabase
+        // First try to find survey directly by ID (public or via link)
+        let { data, error } = await supabase
           .from('surveys')
           .select('*')
           .eq('id', surveyId)
-          .eq('is_public', true)
           .single();
 
-        if (error) throw error;
+        // If not found by ID, try to find via survey_links table
+        if (error || !data) {
+          const { data: linkData } = await supabase
+            .from('survey_links')
+            .select('survey_id')
+            .eq('link_id', surveyId)
+            .single();
 
-        if (data) {
-          setSurvey(data as Survey);
-          // Subscribe to real-time updates
-          subscribeToSurveyUpdates(surveyId);
+          if (linkData?.survey_id) {
+            const { data: surveyData } = await supabase
+              .from('surveys')
+              .select('*')
+              .eq('id', linkData.survey_id)
+              .single();
+            
+            data = surveyData;
+          }
         }
+
+        if (!data) {
+          throw new Error('Survey not found');
+        }
+
+        // Check if survey is accessible (not closed)
+        if (data.status === 'closed') {
+          throw new Error('Survey is closed');
+        }
+
+        setSurvey(data as Survey);
+        subscribeToSurveyUpdates(data.id);
       } catch (error: any) {
         console.error('Error loading survey:', error);
         toast({
