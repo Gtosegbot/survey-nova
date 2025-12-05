@@ -181,33 +181,30 @@ export default function AIResearcher() {
     setIsCreatingSurvey(true);
     
     try {
-      // Call n8n webhook to generate survey
-      const response = await fetch('https://workwebhook.disparoseguro.com/webhook/ai-creator', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // Call edge function to generate survey via Lovable AI
+      const { data, error } = await supabase.functions.invoke('ai-survey-creator', {
+        body: {
           prompt: surveyPrompt,
-          userId: user.id,
-          mode: 'create_survey'
-        })
+          userId: user.id
+        }
       });
 
-      if (!response.ok) throw new Error('Failed to create survey');
+      if (error) throw error;
 
-      const data = await response.json();
-      
-      if (data.survey) {
+      if (data?.survey) {
         setCreatedSurvey(data.survey);
         toast({
           title: "Pesquisa criada! ✨",
           description: "Agora você pode revisar e publicar sua pesquisa.",
         });
+      } else if (data?.error) {
+        throw new Error(data.error);
       }
     } catch (error) {
       console.error('Error creating survey:', error);
       toast({
         title: "Erro ao criar pesquisa",
-        description: "Tente descrever sua pesquisa de outra forma.",
+        description: error instanceof Error ? error.message : "Tente descrever sua pesquisa de outra forma.",
         variant: "destructive"
       });
     } finally {
